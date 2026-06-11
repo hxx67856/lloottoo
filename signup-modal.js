@@ -3,7 +3,7 @@ const API_URL = "/api/signup";
 const TESTIMONIALS = [
   {
     name: "김민준",
-    region: "서울 강남",
+    age: 34,
     prize: "1등",
     drawNo: 1182,
     quote:
@@ -11,7 +11,7 @@ const TESTIMONIALS = [
   },
   {
     name: "이서연",
-    region: "부산 해운대",
+    age: 28,
     prize: "2등",
     drawNo: 1204,
     quote:
@@ -19,7 +19,7 @@ const TESTIMONIALS = [
   },
   {
     name: "박지훈",
-    region: "대구 수성",
+    age: 41,
     prize: "1등",
     drawNo: 1216,
     quote:
@@ -27,7 +27,7 @@ const TESTIMONIALS = [
   },
   {
     name: "최유나",
-    region: "인천 연수",
+    age: 32,
     prize: "2등",
     drawNo: 1221,
     quote:
@@ -35,7 +35,7 @@ const TESTIMONIALS = [
   },
   {
     name: "정하늘",
-    region: "광주 북구",
+    age: 37,
     prize: "1등",
     drawNo: 1225,
     quote:
@@ -85,7 +85,7 @@ function renderTestimonials() {
         <span class="testimonial-draw">${item.drawNo}회</span>
       </div>
       <p class="testimonial-quote">"${item.quote}"</p>
-      <p class="testimonial-author">${item.name} · ${item.region}</p>
+      <p class="testimonial-author">${item.name} · ${item.age}세</p>
     `;
     list.appendChild(card);
   });
