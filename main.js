@@ -1,4 +1,5 @@
 import { initHistory } from "./history.js";
+import { explainDraw, initChatbot } from "./chatbot.js";
 import {
   animateTicketDraw,
   createDrawStage,
@@ -58,6 +59,8 @@ async function draw() {
   isDrawing = true;
   setControlsDisabled(true);
   drawBtn.classList.add("drawing");
+  const chatbotPanel = document.getElementById("chatbot-panel");
+  if (chatbotPanel) chatbotPanel.hidden = true;
   resultsEl.innerHTML = "";
 
   const { stage, machine, chuteBall, status } = createDrawStage();
@@ -67,6 +70,7 @@ async function draw() {
   resultsEl.append(stage, ticketsEl);
 
   const ctx = { machine, statusEl: status, chuteBall, ticketsEl };
+  const drawnSets = [];
 
   try {
     for (let i = 0; i < setCount; i++) {
@@ -75,11 +79,14 @@ async function draw() {
         await new Promise((r) => setTimeout(r, SET_GAP_MS));
       }
 
-      await animateTicketDraw(drawLottoNumbers(), i, ctx);
+      const result = drawLottoNumbers();
+      drawnSets.push(result);
+      await animateTicketDraw(result, i, ctx);
     }
 
     status.textContent = "모든 추첨이 완료되었습니다!";
     await finishDrawStage(stage);
+    await explainDraw(drawnSets);
   } finally {
     isDrawing = false;
     drawBtn.classList.remove("drawing");
@@ -125,6 +132,8 @@ tabButtons.forEach((btn) => {
 resultsEl.innerHTML =
   '<p class="empty-state">위 버튼을 눌러 번호를 추첨해 보세요.</p>';
 updateSetCountDisplay();
+
+initChatbot();
 
 initHistory({
   listEl: document.getElementById("history-list"),

@@ -49,6 +49,27 @@
         <main id="results" class="results" aria-live="polite" aria-label="추첨 결과">
           <p class="empty-state">위 버튼을 눌러 번호를 추첨해 보세요.</p>
         </main>
+
+        <section id="chatbot-panel" class="chatbot-panel" hidden aria-label="추첨 설명 챗봇">
+          <div class="chatbot-header">
+            <p class="chatbot-eyebrow">Explain</p>
+            <h2 class="chatbot-title">추첨 번호 설명</h2>
+            <p class="chatbot-desc">Gemini가 확률 통계를 바탕으로 이번 추첨 결과를 설명합니다.</p>
+          </div>
+          <div id="chatbot-messages" class="chatbot-messages" aria-live="polite"></div>
+          <form id="chatbot-form" class="chatbot-form">
+            <label class="chatbot-input-label" for="chatbot-input">Ask</label>
+            <div class="chatbot-input-row">
+              <input
+                id="chatbot-input"
+                type="text"
+                placeholder="예: 이 조합의 당첨 확률은 얼마인가요?"
+                autocomplete="off"
+              />
+              <button type="submit" class="chatbot-send-btn">Send</button>
+            </div>
+          </form>
+        </section>
       </section>
 
       <section id="panel-history" class="tab-panel" aria-label="역대 1등 당첨번호" hidden>
@@ -369,7 +390,9 @@
 
         isDrawing = true;
         setControlsDisabled(true);
-          drawBtn.textContent = "Drawing...";
+        drawBtn.textContent = "Drawing...";
+        var chatbotPanel = document.getElementById("chatbot-panel");
+        if (chatbotPanel) chatbotPanel.hidden = true;
         resultsEl.innerHTML = "";
 
         var stageParts = createDrawStage();
@@ -384,18 +407,25 @@
           ticketsEl: ticketsEl,
         };
 
+        var drawnSets = [];
+
         try {
           for (var i = 0; i < setCount; i++) {
             if (i > 0) {
               ctx.status.textContent = "다음 세트 준비 중...";
               await sleep(SET_GAP_MS);
             }
-            await animateTicketDraw(drawLottoNumbers(), i, ctx);
+            var result = drawLottoNumbers();
+            drawnSets.push(result);
+            await animateTicketDraw(result, i, ctx);
           }
 
           ctx.status.textContent = "모든 추첨이 완료되었습니다!";
           stageParts.stage.classList.add("is-finished");
           await sleep(FINISH_MS);
+          document.dispatchEvent(
+            new CustomEvent("lotto-draw-complete", { detail: { sets: drawnSets } })
+          );
         } finally {
           isDrawing = false;
           drawBtn.textContent = "Draw Numbers";
@@ -566,6 +596,10 @@
           historyStatusEl.textContent = "데이터를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.";
           historyCountEl.textContent = "";
         });
+    </script>
+    <script type="module">
+      import { initChatbot } from "./chatbot.js";
+      initChatbot();
     </script>
   </body>
 </html>
