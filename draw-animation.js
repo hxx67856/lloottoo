@@ -1,7 +1,11 @@
 import { createBall, getBallColorRange } from "./utils.js";
 
-const EASE_SMOOTH = "cubic-bezier(0.22, 1, 0.36, 1)";
-const BALL_SIZE = 48;
+const SHUFFLE_MS = 320;
+const REVEAL_MS = 100;
+const BALL_GAP_MS = 50;
+const BONUS_GAP_MS = 120;
+const SET_GAP_MS = 250;
+const FINISH_MS = 300;
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -120,8 +124,7 @@ async function shuffleInChute(chuteBall, machine, duration) {
   return new Promise((resolve) => {
     const tick = (now) => {
       const elapsed = now - start;
-      const progress = Math.min(elapsed / duration, 1);
-      const interval = 45 + progress ** 2.2 * 280;
+      const interval = 55;
 
       if (now - lastChange >= interval) {
         const n = Math.floor(Math.random() * 45) + 1;
@@ -144,108 +147,49 @@ async function shuffleInChute(chuteBall, machine, duration) {
   });
 }
 
-function createFlyer(number, fromRect, isBonus = false) {
-  const half = BALL_SIZE / 2;
-  const flyer = createBall(number, { animate: false, bonus: isBonus });
-  flyer.className = "ball ball-flyer";
-  flyer.style.cssText = `
-    position: fixed;
-    left: ${fromRect.left + fromRect.width / 2 - half}px;
-    top: ${fromRect.top + fromRect.height / 2 - half}px;
-    width: ${BALL_SIZE}px;
-    height: ${BALL_SIZE}px;
-    z-index: 9999;
-    margin: 0;
-    pointer-events: none;
-    will-change: transform, opacity;
-  `;
-  return flyer;
-}
-
-async function flyBallToSlot(chuteBall, slot, number, isBonus = false) {
-  const fromRect = chuteBall.getBoundingClientRect();
-  const toRect = slot.getBoundingClientRect();
-  const half = BALL_SIZE / 2;
-
-  const fromX = fromRect.left + fromRect.width / 2 - half;
-  const fromY = fromRect.top + fromRect.height / 2 - half;
-  const toX = toRect.left + toRect.width / 2 - half;
-  const toY = toRect.top + toRect.height / 2 - half;
-  const dx = toX - fromX;
-  const dy = toY - fromY;
-
-  const flyer = createFlyer(number, fromRect, isBonus);
-  document.body.appendChild(flyer);
-
-  chuteBall.classList.add("is-emptying");
-
-  const anim = flyer.animate(
-    [
-      { transform: "translate(0, 0) scale(1.14)", opacity: 1 },
-      {
-        transform: `translate(${dx * 0.4}px, ${dy * 0.62}px) scale(1.06)`,
-        opacity: 1,
-        offset: 0.55,
-      },
-      { transform: `translate(${dx}px, ${dy}px) scale(1)`, opacity: 1 },
-    ],
-    { duration: 780, easing: EASE_SMOOTH, fill: "forwards" },
-  );
-
-  await anim.finished;
-  flyer.remove();
-  resetChuteBall(chuteBall);
-
+function placeBallInSlot(slot, number, isBonus = false) {
   slot.classList.add("is-filled");
   const ball = createBall(number, { animate: false, bonus: isBonus });
   ball.classList.add("ball-landed-soft");
   slot.replaceChildren(ball);
 }
 
-async function revealBall(chuteBall, slot, number, machine, shuffleMs, isBonus = false) {
-  await shuffleInChute(chuteBall, machine, shuffleMs);
+async function revealBall(chuteBall, slot, number, machine, isBonus = false) {
+  await shuffleInChute(chuteBall, machine, SHUFFLE_MS);
 
   chuteBall.textContent = number;
   chuteBall.dataset.range = getBallColorRange(number);
   chuteBall.classList.toggle("is-bonus", isBonus);
   chuteBall.classList.remove("is-shuffling");
   chuteBall.classList.add("is-revealed");
-  await sleep(480);
+  await sleep(REVEAL_MS);
 
-  await flyBallToSlot(chuteBall, slot, number, isBonus);
-  await sleep(120);
+  resetChuteBall(chuteBall);
+  placeBallInSlot(slot, number, isBonus);
 }
 
 export async function animateTicketDraw(
   result,
   setIndex,
-  { machine, statusEl, chuteBall, fast = false },
+  { machine, statusEl, chuteBall, ticketsEl },
 ) {
   const { ticket, mainSlots, bonusSlot, separator, bonusGroup } =
     createDrawingTicket(setIndex);
-  const shuffleMs = fast ? 900 : 1500;
-  const pauseMs = fast ? 280 : 480;
+  ticketsEl.appendChild(ticket);
   const main = [...result.main].sort((a, b) => a - b);
 
   for (let i = 0; i < main.length; i++) {
     statusEl.textContent = `세트 ${setIndex + 1} · ${i + 1}번째 공 추첨 중`;
-    await revealBall(chuteBall, mainSlots[i], main[i], machine, shuffleMs);
-    await sleep(pauseMs);
+    await revealBall(chuteBall, mainSlots[i], main[i], machine);
+    if (i < main.length - 1) await sleep(BALL_GAP_MS);
   }
 
   separator.classList.remove("is-hidden");
   bonusGroup.classList.remove("is-hidden");
   statusEl.textContent = `세트 ${setIndex + 1} · 보너스 번호 추첨 중`;
-  await sleep(fast ? 520 : 850);
+  await sleep(BONUS_GAP_MS);
 
-  await revealBall(
-    chuteBall,
-    bonusSlot,
-    result.bonus,
-    machine,
-    shuffleMs + 200,
-    true,
-  );
+  await revealBall(chuteBall, bonusSlot, result.bonus, machine, true);
 
   statusEl.textContent = `세트 ${setIndex + 1} 추첨 완료!`;
   ticket.classList.remove("ticket-drawing");
@@ -253,7 +197,9 @@ export async function animateTicketDraw(
   return ticket;
 }
 
+export { SET_GAP_MS, FINISH_MS };
+
 export async function finishDrawStage(stage) {
   stage.classList.add("is-finished");
-  await sleep(1000);
+  await sleep(FINISH_MS);
 }

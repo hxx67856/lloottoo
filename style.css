@@ -536,12 +536,8 @@ body {
   background: transparent;
 }
 
-.ball-flyer {
-  animation: none !important;
-}
-
 .ball-landed-soft {
-  animation: ballLandSoft 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation: ballFadeIn 0.15s ease both;
 }
 
 .bonus-separator.is-hidden,
@@ -553,23 +549,17 @@ body {
 
 .bonus-separator:not(.is-hidden),
 .bonus-group:not(.is-hidden) {
-  animation: fadeSlideIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  opacity: 1;
+  transform: none;
 }
 
-.ticket-drawing {
-  opacity: 0.95;
-}
-
-.ticket-complete {
-  animation: slideIn 0.4s ease-out both;
-}
-
+.ticket-drawing,
+.ticket-complete,
 .ticket {
   background: var(--surface-card);
   border: 1px solid var(--hairline);
   border-radius: var(--radius-none);
   padding: 24px;
-  animation: slideIn 0.4s ease-out both;
 }
 
 .ticket-label {
@@ -864,10 +854,9 @@ body {
   100% { transform: scale(1); opacity: 1; }
 }
 
-@keyframes ballLandSoft {
-  0% { transform: scale(0.88); opacity: 0.5; }
-  70% { transform: scale(1.04); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
+@keyframes ballFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeSlideIn {

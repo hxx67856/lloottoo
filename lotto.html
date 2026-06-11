@@ -258,8 +258,12 @@
         };
       }
 
-      var EASE_SMOOTH = "cubic-bezier(0.22, 1, 0.36, 1)";
-      var BALL_SIZE = 48;
+      var SHUFFLE_MS = 320;
+      var REVEAL_MS = 100;
+      var BALL_GAP_MS = 50;
+      var BONUS_GAP_MS = 120;
+      var SET_GAP_MS = 250;
+      var FINISH_MS = 300;
 
       function resetChuteBall(chuteBall) {
         chuteBall.classList.remove("is-revealed", "is-emptying", "is-bonus");
@@ -280,8 +284,7 @@
         return new Promise(function (resolve) {
           function tick(now) {
             var elapsed = now - start;
-            var progress = Math.min(elapsed / duration, 1);
-            var interval = 45 + Math.pow(progress, 2.2) * 280;
+            var interval = 55;
 
             if (now - lastChange >= interval) {
               var n = Math.floor(Math.random() * 45) + 1;
@@ -304,46 +307,7 @@
         });
       }
 
-      function createFlyer(number, fromRect, isBonus) {
-        var half = BALL_SIZE / 2;
-        var flyer = createBall(number, 0, isBonus);
-        flyer.className = "ball ball-flyer";
-        flyer.style.cssText =
-          "position:fixed;left:" + (fromRect.left + fromRect.width / 2 - half) + "px;" +
-          "top:" + (fromRect.top + fromRect.height / 2 - half) + "px;" +
-          "width:" + BALL_SIZE + "px;height:" + BALL_SIZE + "px;z-index:9999;margin:0;" +
-          "pointer-events:none;will-change:transform,opacity;animation:none;";
-        return flyer;
-      }
-
-      async function flyBallToSlot(chuteBall, slot, number, isBonus) {
-        var fromRect = chuteBall.getBoundingClientRect();
-        var toRect = slot.getBoundingClientRect();
-        var half = BALL_SIZE / 2;
-        var fromX = fromRect.left + fromRect.width / 2 - half;
-        var fromY = fromRect.top + fromRect.height / 2 - half;
-        var toX = toRect.left + toRect.width / 2 - half;
-        var toY = toRect.top + toRect.height / 2 - half;
-        var dx = toX - fromX;
-        var dy = toY - fromY;
-
-        var flyer = createFlyer(number, fromRect, isBonus);
-        document.body.appendChild(flyer);
-        chuteBall.classList.add("is-emptying");
-
-        var anim = flyer.animate(
-          [
-            { transform: "translate(0, 0) scale(1.14)", opacity: 1 },
-            { transform: "translate(" + (dx * 0.4) + "px, " + (dy * 0.62) + "px) scale(1.06)", opacity: 1, offset: 0.55 },
-            { transform: "translate(" + dx + "px, " + dy + "px) scale(1)", opacity: 1 },
-          ],
-          { duration: 780, easing: EASE_SMOOTH, fill: "forwards" }
-        );
-
-        await anim.finished;
-        flyer.remove();
-        resetChuteBall(chuteBall);
-
+      function placeBallInSlot(slot, number, isBonus) {
         slot.classList.add("is-filled");
         var ball = createBall(number, 0, isBonus);
         ball.style.animation = "none";
@@ -351,35 +315,34 @@
         slot.replaceChildren(ball);
       }
 
-      async function revealBall(chuteBall, slot, number, machine, shuffleMs, isBonus) {
-        await shuffleInChute(chuteBall, machine, shuffleMs);
+      async function revealBall(chuteBall, slot, number, machine, isBonus) {
+        await shuffleInChute(chuteBall, machine, SHUFFLE_MS);
         chuteBall.textContent = number;
         chuteBall.dataset.range = getBallColorRange(number);
         chuteBall.classList.toggle("is-bonus", !!isBonus);
         chuteBall.classList.remove("is-shuffling");
         chuteBall.classList.add("is-revealed");
-        await sleep(480);
-        await flyBallToSlot(chuteBall, slot, number, isBonus);
-        await sleep(120);
+        await sleep(REVEAL_MS);
+        resetChuteBall(chuteBall);
+        placeBallInSlot(slot, number, isBonus);
       }
 
       async function animateTicketDraw(result, setIndex, ctx) {
         var parts = createDrawingTicket(setIndex);
-        var shuffleMs = ctx.fast ? 900 : 1500;
-        var pauseMs = ctx.fast ? 280 : 480;
+        ctx.ticketsEl.appendChild(parts.ticket);
         var main = result.main.slice().sort(function (a, b) { return a - b; });
 
         for (var i = 0; i < main.length; i++) {
           ctx.status.textContent = "세트 " + (setIndex + 1) + " · " + (i + 1) + "번째 공 추첨 중";
-          await revealBall(ctx.chuteBall, parts.mainSlots[i], main[i], ctx.machine, shuffleMs);
-          await sleep(pauseMs);
+          await revealBall(ctx.chuteBall, parts.mainSlots[i], main[i], ctx.machine);
+          if (i < main.length - 1) await sleep(BALL_GAP_MS);
         }
 
         parts.separator.classList.remove("is-hidden");
         parts.bonusGroup.classList.remove("is-hidden");
         ctx.status.textContent = "세트 " + (setIndex + 1) + " · 보너스 번호 추첨 중";
-        await sleep(ctx.fast ? 520 : 850);
-        await revealBall(ctx.chuteBall, parts.bonusSlot, result.bonus, ctx.machine, shuffleMs + 200, true);
+        await sleep(BONUS_GAP_MS);
+        await revealBall(ctx.chuteBall, parts.bonusSlot, result.bonus, ctx.machine, true);
 
         parts.ticket.classList.remove("ticket-drawing");
         parts.ticket.classList.add("ticket-complete");
@@ -414,26 +377,25 @@
         ticketsEl.className = "draw-tickets";
         resultsEl.append(stageParts.stage, ticketsEl);
 
-        var fast = setCount > 2;
         var ctx = {
           machine: stageParts.machine,
           chuteBall: stageParts.chuteBall,
           status: stageParts.status,
-          fast: fast,
+          ticketsEl: ticketsEl,
         };
 
         try {
           for (var i = 0; i < setCount; i++) {
             if (i > 0) {
               ctx.status.textContent = "다음 세트 준비 중...";
-              await sleep(fast ? 500 : 900);
+              await sleep(SET_GAP_MS);
             }
-            ticketsEl.appendChild(await animateTicketDraw(drawLottoNumbers(), i, ctx));
+            await animateTicketDraw(drawLottoNumbers(), i, ctx);
           }
 
           ctx.status.textContent = "모든 추첨이 완료되었습니다!";
           stageParts.stage.classList.add("is-finished");
-          await sleep(1000);
+          await sleep(FINISH_MS);
         } finally {
           isDrawing = false;
           drawBtn.textContent = "Draw Numbers";

@@ -3,6 +3,7 @@ import {
   animateTicketDraw,
   createDrawStage,
   finishDrawStage,
+  SET_GAP_MS,
 } from "./draw-animation.js";
 
 const MIN_NUMBER = 1;
@@ -65,18 +66,16 @@ async function draw() {
 
   resultsEl.append(stage, ticketsEl);
 
-  const fast = setCount > 2;
-  const ctx = { machine, statusEl: status, chuteBall, fast };
+  const ctx = { machine, statusEl: status, chuteBall, ticketsEl };
 
   try {
     for (let i = 0; i < setCount; i++) {
       if (i > 0) {
         status.textContent = "다음 세트 준비 중...";
-        await new Promise((r) => setTimeout(r, fast ? 500 : 900));
+        await new Promise((r) => setTimeout(r, SET_GAP_MS));
       }
 
-      const ticket = await animateTicketDraw(drawLottoNumbers(), i, ctx);
-      ticketsEl.appendChild(ticket);
+      await animateTicketDraw(drawLottoNumbers(), i, ctx);
     }
 
     status.textContent = "모든 추첨이 완료되었습니다!";
