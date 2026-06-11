@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로또 번호 추첨기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=JetBrains+Mono:wght@400&family=Noto+Sans+KR:wght@400&family=Noto+Serif+KR:wght@400&family=Saira+Condensed:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <div class="brand">
+          <span class="brand-name">Lotto Draw</span>
+        </div>
+
+        <nav class="tabs" role="tablist" aria-label="메뉴">
+          <button type="button" class="tab-btn active" data-tab="panel-draw" aria-selected="true">Draw</button>
+          <button type="button" class="tab-btn" data-tab="panel-history" aria-selected="false">History</button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="app">
+      <div class="page-intro">
+        <h1>행운의 번호</h1>
+        <p class="subtitle">1~45 중 6개 번호와 보너스 번호 1개를 무작위로 추첨합니다</p>
+      </div>
+
+      <section id="panel-draw" class="tab-panel active" aria-label="번호 추첨">
+        <div class="controls" aria-label="추첨 설정">
+          <label class="control-group">
+            <span class="label">Set Count</span>
+            <div class="stepper">
+              <button type="button" id="decrease" aria-label="세트 수 줄이기">−</button>
+              <output id="set-count">1</output>
+              <button type="button" id="increase" aria-label="세트 수 늘리기">+</button>
+            </div>
+          </label>
+
+          <button type="button" id="draw-btn" class="draw-btn">Draw Numbers</button>
+        </div>
+
+        <main id="results" class="results" aria-live="polite" aria-label="추첨 결과">
+          <p class="empty-state">위 버튼을 눌러 번호를 추첨해 보세요.</p>
+        </main>
+      </section>
+
+      <section id="panel-history" class="tab-panel" aria-label="역대 1등 당첨번호" hidden>
+        <div class="history-toolbar">
+          <label class="search-field">
+            <span class="label">Search</span>
+            <input type="search" id="history-search" placeholder="1227 or 3 12 21" autocomplete="off" />
+          </label>
+          <span id="history-count" class="history-count"></span>
+        </div>
+        <p id="history-status" class="history-status"></p>
+        <div id="history-list" class="history-list"></div>
+      </section>
+
+      <footer class="footer">
+        <p>※ 본 추첨기는 오락용이며, 당첨을 보장하지 않습니다.</p>
+      </footer>
+    </div>
+
+    <script>
+      const MIN_NUMBER = 1;
+      const MAX_NUMBER = 45;
+      const PICK_COUNT = 6;
+      const MIN_SETS = 1;
+      const MAX_SETS = 5;
+
+      const setCountEl = document.getElementById("set-count");
+      const decreaseBtn = document.getElementById("decrease");
+      const increaseBtn = document.getElementById("increase");
+      const drawBtn = document.getElementById("draw-btn");
+      const resultsEl = document.getElementById("results");
+
+      let setCount = 1;
+      let isDrawing = false;
+
+      function sleep(ms) {
+        return new Promise(function (resolve) { setTimeout(resolve, ms); });
+      }
+
+      function getBallColorRange(num) {
+        if (num <= 10) return "yellow";
+        if (num <= 20) return "blue";
+        if (num <= 30) return "red";
+        if (num <= 40) return "gray";
+        return "green";
+      }
+
+      function drawLottoNumbers() {
+        const pool = Array.from({ length: MAX_NUMBER }, (_, i) => i + MIN_NUMBER);
+        const main = [];
+
+        for (let i = 0; i < PICK_COUNT; i++) {
+          const index = Math.floor(Math.random() * pool.length);
+          main.push(pool.splice(index, 1)[0]);
+        }
+
+        const bonusIndex = Math.floor(Math.random() * pool.length);
+        const bonus = pool[bonusIndex];
+
+        return { main: main.sort(function (a, b) { return a - b; }), bonus: bonus };
+      }
+
+      function createBall(num, delayIndex, isBonus) {
+        const ball = document.createElement("div");
+        ball.className = "ball";
+        if (isBonus) ball.classList.add("is-bonus");
+        ball.textContent = num;
+        ball.dataset.range = getBallColorRange(num);
+        ball.style.animationDelay = delayIndex * 0.07 + "s";
+        return ball;
+      }
+
+      function renderDrawRow(result, small) {
+        const row = document.createElement("div");
+        row.className = "balls-row";
+
+        const balls = document.createElement("div");
+        balls.className = "balls";
+        result.main.forEach(function (num, i) {
+          const ball = createBall(num, i);
+          if (small) {
+            ball.classList.add("ball-sm");
+            ball.style.animation = "none";
+          }
+          balls.appendChild(ball);
+        });
+
+        const separator = document.createElement("span");
+        separator.className = "bonus-separator";
+        separator.textContent = "+";
+        separator.setAttribute("aria-hidden", "true");
+
+        const bonusGroup = document.createElement("div");
+        bonusGroup.className = "bonus-group";
+
+        const bonusLabel = document.createElement("span");
+        bonusLabel.className = "bonus-label";
+        bonusLabel.textContent = "보너스";
+
+        const bonusBall = createBall(result.bonus, result.main.length, true);
+        if (small) {
+          bonusBall.classList.add("ball-sm");
+          bonusBall.style.animation = "none";
+        }
+
+        bonusGroup.append(bonusLabel, bonusBall);
+        row.append(balls, separator, bonusGroup);
+        return row;
+      }
+
+      function createBallSlot() {
+        var slot = document.createElement("div");
+        slot.className = "ball-slot";
+        slot.innerHTML = '<span class="ball-slot-inner">?</span>';
+        return slot;
+      }
+
+      function createDrawStage() {
+        var stage = document.createElement("div");
+        stage.className = "draw-stage";
+
+        var machine = document.createElement("div");
+        machine.className = "lotto-machine";
+
+        var body = document.createElement("div");
+        body.className = "machine-body";
+
+        var drum = document.createElement("div");
+        drum.className = "machine-drum";
+
+        var drumBalls = document.createElement("div");
+        drumBalls.className = "drum-balls";
+        for (var i = 0; i < 10; i++) {
+          var db = document.createElement("span");
+          db.className = "drum-ball";
+          db.style.setProperty("--i", String(i));
+          db.textContent = Math.floor(Math.random() * 45) + 1;
+          drumBalls.appendChild(db);
+        }
+
+        var neck = document.createElement("div");
+        neck.className = "machine-neck";
+
+        var chute = document.createElement("div");
+        chute.className = "machine-chute";
+
+        var chuteBall = document.createElement("div");
+        chuteBall.className = "chute-ball";
+        chuteBall.textContent = "?";
+
+        var status = document.createElement("p");
+        status.className = "machine-status";
+        status.textContent = "추첨기 준비 완료";
+
+        chute.appendChild(chuteBall);
+        drum.appendChild(drumBalls);
+        body.append(drum, neck, chute);
+        machine.append(body, status);
+        stage.appendChild(machine);
+
+        return { stage: stage, machine: machine, chuteBall: chuteBall, status: status };
+      }
+
+      function createDrawingTicket(setIndex) {
+        var ticket = document.createElement("article");
+        ticket.className = "ticket ticket-drawing";
+
+        var label = document.createElement("p");
+        label.className = "ticket-label";
+        label.textContent = "세트 " + (setIndex + 1);
+
+        var row = document.createElement("div");
+        row.className = "balls-row";
+
+        var balls = document.createElement("div");
+        balls.className = "balls";
+        var mainSlots = [];
+
+        for (var i = 0; i < 6; i++) {
+          var slot = createBallSlot();
+          mainSlots.push(slot);
+          balls.appendChild(slot);
+        }
+
+        var separator = document.createElement("span");
+        separator.className = "bonus-separator is-hidden";
+        separator.textContent = "+";
+
+        var bonusGroup = document.createElement("div");
+        bonusGroup.className = "bonus-group is-hidden";
+
+        var bonusLabel = document.createElement("span");
+        bonusLabel.className = "bonus-label";
+        bonusLabel.textContent = "보너스";
+
+        var bonusSlot = createBallSlot();
+        bonusGroup.append(bonusLabel, bonusSlot);
+        row.append(balls, separator, bonusGroup);
+        ticket.append(label, row);
+
+        return {
+          ticket: ticket,
+          mainSlots: mainSlots,
+          bonusSlot: bonusSlot,
+          separator: separator,
+          bonusGroup: bonusGroup,
+        };
+      }
+
+      var EASE_SMOOTH = "cubic-bezier(0.22, 1, 0.36, 1)";
+      var BALL_SIZE = 48;
+
+      function resetChuteBall(chuteBall) {
+        chuteBall.classList.remove("is-revealed", "is-emptying", "is-bonus");
+        chuteBall.textContent = "?";
+        delete chuteBall.dataset.range;
+      }
+
+      function shuffleInChute(chuteBall, machine, duration) {
+        machine.classList.add("is-shaking");
+        chuteBall.classList.remove("is-revealed", "is-emptying", "is-bonus");
+        chuteBall.classList.add("is-shuffling");
+        chuteBall.textContent = "?";
+        delete chuteBall.dataset.range;
+
+        var start = performance.now();
+        var lastChange = 0;
+
+        return new Promise(function (resolve) {
+          function tick(now) {
+            var elapsed = now - start;
+            var progress = Math.min(elapsed / duration, 1);
+            var interval = 45 + Math.pow(progress, 2.2) * 280;
+
+            if (now - lastChange >= interval) {
+              var n = Math.floor(Math.random() * 45) + 1;
+              chuteBall.classList.add("is-ticking");
+              chuteBall.textContent = n;
+              chuteBall.dataset.range = getBallColorRange(n);
+              requestAnimationFrame(function () { chuteBall.classList.remove("is-ticking"); });
+              lastChange = now;
+            }
+
+            if (elapsed < duration) {
+              requestAnimationFrame(tick);
+            } else {
+              machine.classList.remove("is-shaking");
+              chuteBall.classList.remove("is-shuffling");
+              resolve();
+            }
+          }
+          requestAnimationFrame(tick);
+        });
+      }
+
+      function createFlyer(number, fromRect, isBonus) {
+        var half = BALL_SIZE / 2;
+        var flyer = createBall(number, 0, isBonus);
+        flyer.className = "ball ball-flyer";
+        flyer.style.cssText =
+          "position:fixed;left:" + (fromRect.left + fromRect.width / 2 - half) + "px;" +
+          "top:" + (fromRect.top + fromRect.height / 2 - half) + "px;" +
+          "width:" + BALL_SIZE + "px;height:" + BALL_SIZE + "px;z-index:9999;margin:0;" +
+          "pointer-events:none;will-change:transform,opacity;animation:none;";
+        return flyer;
+      }
+
+      async function flyBallToSlot(chuteBall, slot, number, isBonus) {
+        var fromRect = chuteBall.getBoundingClientRect();
+        var toRect = slot.getBoundingClientRect();
+        var half = BALL_SIZE / 2;
+        var fromX = fromRect.left + fromRect.width / 2 - half;
+        var fromY = fromRect.top + fromRect.height / 2 - half;
+        var toX = toRect.left + toRect.width / 2 - half;
+        var toY = toRect.top + toRect.height / 2 - half;
+        var dx = toX - fromX;
+        var dy = toY - fromY;
+
+        var flyer = createFlyer(number, fromRect, isBonus);
+        document.body.appendChild(flyer);
+        chuteBall.classList.add("is-emptying");
+
+        var anim = flyer.animate(
+          [
+            { transform: "translate(0, 0) scale(1.14)", opacity: 1 },
+            { transform: "translate(" + (dx * 0.4) + "px, " + (dy * 0.62) + "px) scale(1.06)", opacity: 1, offset: 0.55 },
+            { transform: "translate(" + dx + "px, " + dy + "px) scale(1)", opacity: 1 },
+          ],
+          { duration: 780, easing: EASE_SMOOTH, fill: "forwards" }
+        );
+
+        await anim.finished;
+        flyer.remove();
+        resetChuteBall(chuteBall);
+
+        slot.classList.add("is-filled");
+        var ball = createBall(number, 0, isBonus);
+        ball.style.animation = "none";
+        ball.classList.add("ball-landed-soft");
+        slot.replaceChildren(ball);
+      }
+
+      async function revealBall(chuteBall, slot, number, machine, shuffleMs, isBonus) {
+        await shuffleInChute(chuteBall, machine, shuffleMs);
+        chuteBall.textContent = number;
+        chuteBall.dataset.range = getBallColorRange(number);
+        chuteBall.classList.toggle("is-bonus", !!isBonus);
+        chuteBall.classList.remove("is-shuffling");
+        chuteBall.classList.add("is-revealed");
+        await sleep(480);
+        await flyBallToSlot(chuteBall, slot, number, isBonus);
+        await sleep(120);
+      }
+
+      async function animateTicketDraw(result, setIndex, ctx) {
+        var parts = createDrawingTicket(setIndex);
+        var shuffleMs = ctx.fast ? 900 : 1500;
+        var pauseMs = ctx.fast ? 280 : 480;
+        var main = result.main.slice().sort(function (a, b) { return a - b; });
+
+        for (var i = 0; i < main.length; i++) {
+          ctx.status.textContent = "세트 " + (setIndex + 1) + " · " + (i + 1) + "번째 공 추첨 중";
+          await revealBall(ctx.chuteBall, parts.mainSlots[i], main[i], ctx.machine, shuffleMs);
+          await sleep(pauseMs);
+        }
+
+        parts.separator.classList.remove("is-hidden");
+        parts.bonusGroup.classList.remove("is-hidden");
+        ctx.status.textContent = "세트 " + (setIndex + 1) + " · 보너스 번호 추첨 중";
+        await sleep(ctx.fast ? 520 : 850);
+        await revealBall(ctx.chuteBall, parts.bonusSlot, result.bonus, ctx.machine, shuffleMs + 200, true);
+
+        parts.ticket.classList.remove("ticket-drawing");
+        parts.ticket.classList.add("ticket-complete");
+        ctx.status.textContent = "세트 " + (setIndex + 1) + " 추첨 완료!";
+        return parts.ticket;
+      }
+
+      function setControlsDisabled(disabled) {
+        drawBtn.disabled = disabled;
+        decreaseBtn.disabled = disabled || setCount <= MIN_SETS;
+        increaseBtn.disabled = disabled || setCount >= MAX_SETS;
+      }
+
+      function updateSetCountDisplay() {
+        setCountEl.textContent = String(setCount);
+        if (!isDrawing) {
+          decreaseBtn.disabled = setCount <= MIN_SETS;
+          increaseBtn.disabled = setCount >= MAX_SETS;
+        }
+      }
+
+      async function draw() {
+        if (isDrawing) return;
+
+        isDrawing = true;
+        setControlsDisabled(true);
+          drawBtn.textContent = "Drawing...";
+        resultsEl.innerHTML = "";
+
+        var stageParts = createDrawStage();
+        var ticketsEl = document.createElement("div");
+        ticketsEl.className = "draw-tickets";
+        resultsEl.append(stageParts.stage, ticketsEl);
+
+        var fast = setCount > 2;
+        var ctx = {
+          machine: stageParts.machine,
+          chuteBall: stageParts.chuteBall,
+          status: stageParts.status,
+          fast: fast,
+        };
+
+        try {
+          for (var i = 0; i < setCount; i++) {
+            if (i > 0) {
+              ctx.status.textContent = "다음 세트 준비 중...";
+              await sleep(fast ? 500 : 900);
+            }
+            ticketsEl.appendChild(await animateTicketDraw(drawLottoNumbers(), i, ctx));
+          }
+
+          ctx.status.textContent = "모든 추첨이 완료되었습니다!";
+          stageParts.stage.classList.add("is-finished");
+          await sleep(1000);
+        } finally {
+          isDrawing = false;
+          drawBtn.textContent = "Draw Numbers";
+          updateSetCountDisplay();
+          setControlsDisabled(false);
+        }
+      }
+
+      decreaseBtn.addEventListener("click", function () {
+        if (setCount > MIN_SETS) {
+          setCount--;
+          updateSetCountDisplay();
+        }
+      });
+
+      increaseBtn.addEventListener("click", function () {
+        if (setCount < MAX_SETS) {
+          setCount++;
+          updateSetCountDisplay();
+        }
+      });
+
+      drawBtn.addEventListener("click", draw);
+      updateSetCountDisplay();
+
+      var tabButtons = document.querySelectorAll(".tab-btn");
+      var panels = document.querySelectorAll(".tab-panel");
+
+      tabButtons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var targetId = btn.dataset.tab;
+          tabButtons.forEach(function (b) {
+            var active = b.dataset.tab === targetId;
+            b.classList.toggle("active", active);
+            b.setAttribute("aria-selected", String(active));
+          });
+          panels.forEach(function (panel) {
+            var active = panel.id === targetId;
+            panel.classList.toggle("active", active);
+            panel.hidden = !active;
+          });
+        });
+      });
+
+      var historyListEl = document.getElementById("history-list");
+      var historySearchEl = document.getElementById("history-search");
+      var historyCountEl = document.getElementById("history-count");
+      var historyStatusEl = document.getElementById("history-status");
+      var allDraws = [];
+
+      function formatDate(isoDate) {
+        return isoDate.slice(0, 10);
+      }
+
+      function formatPrize(prize) {
+        if (!prize) return null;
+        var eok = Math.floor(prize / 100000000);
+        var man = Math.floor((prize % 100000000) / 10000);
+        if (eok > 0 && man > 0) {
+          return eok + "억 " + man.toLocaleString("ko-KR") + "만원";
+        }
+        if (eok > 0) return eok.toLocaleString("ko-KR") + "억원";
+        return prize.toLocaleString("ko-KR") + "원";
+      }
+
+      function extractFirstPrize(divisions) {
+        var first = divisions && divisions[0];
+        if (!first || !first.prize || first.winners == null) {
+          return { prize: null, winners: null };
+        }
+        return { prize: first.prize, winners: first.winners };
+      }
+
+      function matchesSearch(draw, query) {
+        var trimmed = query.trim();
+        if (!trimmed) return true;
+        if (/^\d+$/.test(trimmed)) return String(draw.drawNo).includes(trimmed);
+        var nums = trimmed.split(/[\s,]+/).map(Number).filter(function (n) {
+          return n >= 1 && n <= 45;
+        });
+        if (nums.length === 0) return true;
+        var all = draw.main.concat([draw.bonus]);
+        return nums.every(function (n) { return all.indexOf(n) !== -1; });
+      }
+
+      function renderHistoryItem(draw) {
+        var item = document.createElement("article");
+        item.className = "history-item";
+
+        var meta = document.createElement("div");
+        meta.className = "history-meta";
+
+        var drawNo = document.createElement("span");
+        drawNo.className = "history-draw-no";
+        drawNo.textContent = draw.drawNo + "회";
+
+        var date = document.createElement("span");
+        date.className = "history-date";
+        date.textContent = draw.date;
+
+        meta.append(drawNo, date);
+
+        var info = document.createElement("div");
+        info.className = "history-info";
+
+        var prizeEl = document.createElement("span");
+        prizeEl.className = "history-prize";
+        var prizeText = formatPrize(draw.prize);
+        prizeEl.textContent = prizeText ? "1등 " + prizeText : "1등 당첨금 정보 없음";
+
+        var winnersEl = document.createElement("span");
+        winnersEl.className = "history-winners";
+        winnersEl.textContent =
+          draw.winners != null
+            ? "당첨 " + draw.winners.toLocaleString("ko-KR") + "명"
+            : "당첨자 정보 없음";
+
+        info.append(prizeEl, winnersEl);
+        item.append(meta, info, renderDrawRow(draw, true));
+        return item;
+      }
+
+      function renderHistoryList() {
+        var query = historySearchEl.value;
+        var filtered = allDraws.filter(function (draw) {
+          return matchesSearch(draw, query);
+        });
+
+        historyListEl.innerHTML = "";
+        if (filtered.length === 0) {
+          historyListEl.innerHTML = '<p class="empty-state">검색 결과가 없습니다.</p>';
+          historyCountEl.textContent = "0건";
+          return;
+        }
+
+        var fragment = document.createDocumentFragment();
+        filtered.forEach(function (draw) {
+          fragment.appendChild(renderHistoryItem(draw));
+        });
+        historyListEl.appendChild(fragment);
+        historyCountEl.textContent = filtered.length + "건";
+      }
+
+      historySearchEl.addEventListener("input", renderHistoryList);
+
+      historyStatusEl.textContent = "역대 당첨번호를 불러오는 중...";
+      fetch("https://smok95.github.io/lotto/results/all.json")
+        .then(function (res) {
+          if (!res.ok) throw new Error("load failed");
+          return res.json();
+        })
+        .then(function (data) {
+          allDraws = data.map(function (draw) {
+            var firstPrize = extractFirstPrize(draw.divisions);
+            return {
+              drawNo: draw.draw_no,
+              main: draw.numbers,
+              bonus: draw.bonus_no,
+              date: formatDate(draw.date),
+              prize: firstPrize.prize,
+              winners: firstPrize.winners,
+            };
+          }).sort(function (a, b) { return b.drawNo - a.drawNo; });
+          historyStatusEl.textContent = "";
+          renderHistoryList();
+        })
+        .catch(function () {
+          historyStatusEl.textContent = "데이터를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.";
+          historyCountEl.textContent = "";
+        });
+    </script>
+  </body>
+</html>

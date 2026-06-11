@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>로또 번호 추첨기</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500&family=JetBrains+Mono:wght@400&family=Noto+Sans+KR:wght@400&family=Noto+Serif+KR:wght@400&family=Saira+Condensed:wght@400&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <div class="site-header-inner">
+        <div class="brand">
+          <span class="brand-name">Lotto Draw</span>
+        </div>
+
+        <nav class="tabs" role="tablist" aria-label="메뉴">
+          <button type="button" class="tab-btn active" role="tab" data-tab="panel-draw" aria-selected="true">
+            Draw
+          </button>
+          <button type="button" class="tab-btn" role="tab" data-tab="panel-history" aria-selected="false">
+            History
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <div class="app">
+      <div class="page-intro">
+        <h1>행운의 번호</h1>
+        <p class="subtitle">1~45 중 6개 번호와 보너스 번호 1개를 무작위로 추첨합니다</p>
+      </div>
+
+      <section id="panel-draw" class="tab-panel active" role="tabpanel" aria-label="번호 추첨">
+        <div class="controls" aria-label="추첨 설정">
+          <label class="control-group">
+            <span class="label">Set Count</span>
+            <div class="stepper">
+              <button type="button" id="decrease" aria-label="세트 수 줄이기">−</button>
+              <output id="set-count" for="decrease increase">1</output>
+              <button type="button" id="increase" aria-label="세트 수 늘리기">+</button>
+            </div>
+          </label>
+
+          <button type="button" id="draw-btn" class="draw-btn">
+            <span class="draw-btn-text">Draw Numbers</span>
+          </button>
+        </div>
+
+        <main id="results" class="results" aria-live="polite" aria-label="추첨 결과"></main>
+      </section>
+
+      <section id="panel-history" class="tab-panel" role="tabpanel" aria-label="역대 1등 당첨번호" hidden>
+        <div class="history-toolbar">
+          <label class="search-field">
+            <span class="label">Search</span>
+            <input
+              type="search"
+              id="history-search"
+              placeholder="1227 or 3 12 21"
+              autocomplete="off"
+            />
+          </label>
+          <span id="history-count" class="history-count"></span>
+        </div>
+        <p id="history-status" class="history-status"></p>
+        <div id="history-list" class="history-list"></div>
+      </section>
+
+      <footer class="footer">
+        <p>※ 본 추첨기는 오락용이며, 당첨을 보장하지 않습니다.</p>
+      </footer>
+    </div>
+
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>
