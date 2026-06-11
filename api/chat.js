@@ -1,7 +1,11 @@
-import { getDrawProbabilityStats } from "../probability.js";
-
 const MODEL = "gemini-2.5-flash-lite";
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+
+const MAIN_PICK = 6;
+const MAX_NUMBER = 45;
+const BONUS_POOL = MAX_NUMBER - MAIN_PICK;
+const MAIN_COMBINATIONS = 8145060;
+const FULL_SET_COMBINATIONS = MAIN_COMBINATIONS * BONUS_POOL;
 
 const SYSTEM_PROMPT = `당신은 한국 로또 6/45 추첨기의 설명 챗봇입니다.
 역할:
@@ -11,6 +15,60 @@ const SYSTEM_PROMPT = `당신은 한국 로또 6/45 추첨기의 설명 챗봇�
 - 제공된 probabilityStats JSON의 수치를 근거로 설명합니다.
 - 한국어로 답하고, 짧은 문단과 불릿을 적절히 섞습니다.
 - 오락용 도구이며 당첨을 보장하지 않는다고 한 번 언급합니다.`;
+
+function getApiKey() {
+  const candidates = [
+    process.env.GEMINI_API_KEY,
+    process.env.GOOGLE_GENERATIVE_AI_API_KEY,
+    process.env.GOOGLE_API_KEY,
+  ];
+
+  for (const value of candidates) {
+    const trimmed = value?.trim();
+    if (trimmed) return trimmed;
+  }
+
+  return "";
+}
+
+function getDrawProbabilityStats(sets) {
+  const singleSetProbability = 1 / FULL_SET_COMBINATIONS;
+  const anyMainNumberProbability = MAIN_PICK / MAX_NUMBER;
+  const anyBonusProbability = 1 / BONUS_POOL;
+
+  return {
+    rules: {
+      poolSize: MAX_NUMBER,
+      mainPick: MAIN_PICK,
+      bonusPick: 1,
+      drawMethod: "중복 없는 무작위 추출 (균등 확률)",
+    },
+    combinations: {
+      main: MAIN_COMBINATIONS,
+      fullSet: FULL_SET_COMBINATIONS,
+    },
+    probabilities: {
+      exactSet: singleSetProbability,
+      exactSetPercent: (singleSetProbability * 100).toExponential(4),
+      exactSetOdds: `1 : ${FULL_SET_COMBINATIONS.toLocaleString("ko-KR")}`,
+      numberInMain: anyMainNumberProbability,
+      numberInMainPercent: `${(anyMainNumberProbability * 100).toFixed(2)}%`,
+      exactBonus: anyBonusProbability,
+      exactBonusPercent: `${(anyBonusProbability * 100).toFixed(2)}%`,
+      multiSet: {
+        setCount: sets.length,
+        atLeastOneExactSet: 1 - (1 - singleSetProbability) ** sets.length,
+      },
+    },
+    sets: sets.map((set, index) => ({
+      setIndex: index + 1,
+      main: [...set.main].sort((a, b) => a - b),
+      bonus: set.bonus,
+      exactSetProbability: singleSetProbability,
+      exactSetOdds: `1/${FULL_SET_COMBINATIONS.toLocaleString("ko-KR")}`,
+    })),
+  };
+}
 
 function buildInitialPrompt(sets, stats) {
   return `방금 추첨이 끝났습니다. 아래 결과와 확률 통계를 바탕으로, 왜 이 번호들이 나왔는지(무작위 추첨 관점)와 각 확률의 의미를 설명해 주세요.
@@ -89,25 +147,56 @@ async function callGemini(apiKey, body) {
   return text;
 }
 
+function parseBody(req) {
+  if (!req.body) return {};
+  if (typeof req.body === "string") {
+    try {
+      return JSON.parse(req.body);
+    } catch {
+      return {};
+    }
+  }
+  return req.body;
+}
+
+function missingKeyResponse(res) {
+  return res.status(500).json({
+    error:
+      "GEMINI_API_KEY is not configured. Vercel에서 환경 변수 이름을 GEMINI_API_KEY로 설정하고 Production/Preview 모두 체크한 뒤 Redeploy 해주세요.",
+    keyConfigured: false,
+    expectedKey: "GEMINI_API_KEY",
+  });
+}
+
 export default async function handler(req, res) {
   if (req.method === "OPTIONS") {
     res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
     return res.status(204).end();
+  }
+
+  const apiKey = getApiKey();
+
+  if (req.method === "GET") {
+    return res.status(200).json({
+      ok: true,
+      keyConfigured: Boolean(apiKey),
+      model: MODEL,
+      expectedKey: "GEMINI_API_KEY",
+    });
   }
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return res.status(500).json({ error: "GEMINI_API_KEY is not configured." });
+    return missingKeyResponse(res);
   }
 
   try {
-    const { sets, message = "", history = [] } = req.body ?? {};
+    const { sets, message = "", history = [] } = parseBody(req);
 
     if (!Array.isArray(sets) || sets.length === 0) {
       return res.status(400).json({ error: "sets array is required." });

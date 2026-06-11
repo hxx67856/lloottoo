@@ -32,6 +32,23 @@ npm run dev:vercel
 
 `.env.example` 파일을 참고하세요. API 키는 클라이언트에 노출되지 않으며 `/api/chat` 서버리스 함수에서만 사용됩니다.
 
+### 환경 변수 설정 체크리스트
+
+1. Vercel → Project → **Settings** → **Environment Variables**
+2. Key: `GEMINI_API_KEY` (철자·대소문자 정확히 일치)
+3. **Production**, **Preview**, **Development** 모두 체크
+4. 저장 후 **Deployments** → 최신 배포 **Redeploy** (캐시 없이 재배포 권장)
+
+### API 키 연결 확인
+
+배포 후 브라우저에서 아래 주소를 열어 `keyConfigured: true` 인지 확인하세요.
+
+```
+https://your-project.vercel.app/api/chat
+```
+
+`false`이면 환경 변수가 아직 배포에 반영되지 않은 것입니다.
+
 ## 기능
 
 - 1~45 중 중복 없는 6개 번호 + 보너스 번호 1개 추첨

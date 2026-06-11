@@ -9,6 +9,9 @@
     "build": "vite build",
     "preview": "vite preview"
   },
+  "dependencies": {
+    "@vercel/node": "^5.3.0"
+  },
   "devDependencies": {
     "vite": "^6.2.0"
   }
