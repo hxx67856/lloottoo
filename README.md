@@ -27,10 +27,17 @@ npm run dev:vercel
 ### 방법 3 — Vercel 배포 (챗봇 포함)
 
 1. 이 저장소를 Vercel에 연결합니다.
-2. Vercel 프로젝트 환경 변수에 `GEMINI_API_KEY`를 추가합니다.
-3. 배포 후 추첨이 끝나면 챗봇이 확률 기반 설명을 자동으로 생성합니다.
+2. Vercel 프로젝트 환경 변수를 추가합니다. (아래 표 참고)
+3. Supabase에 `signups` 테이블을 생성합니다. (`supabase/schema.sql` 실행)
+4. 배포 후 추첨이 끝나면 챗봇 설명과 가입 팝업이 동작합니다.
 
-`.env.example` 파일을 참고하세요. API 키는 클라이언트에 노출되지 않으며 `/api/chat` 서버리스 함수에서만 사용됩니다.
+`.env.example` 파일을 참고하세요. 비밀 키는 클라이언트에 노출되지 않으며 `/api/*` 서버리스 함수에서만 사용됩니다.
+
+| Key | 용도 |
+|-----|------|
+| `GEMINI_API_KEY` | 챗봇 (Gemini API) |
+| `SUPABASE_URL` | 가입 정보 저장 (Supabase 프로젝트 URL) |
+| `SUPABASE_SERVICE_ROLE_KEY` | 가입 정보 저장 (서버 전용, **절대 프론트에 노출 금지**) |
 
 ### 환경 변수 설정 체크리스트
 
@@ -63,3 +70,33 @@ https://your-project.vercel.app/api/chat
 - 추첨 완료 후 자동으로 설명을 요청합니다.
 - 서버에서 로또 조합 확률(예: 약 1/317,657,340)을 계산해 Gemini에 전달합니다.
 - 추가 질문을 입력해 확률 관련 후속 대화가 가능합니다.
+
+## Supabase 가입 정보 저장 설정
+
+### 1. Supabase 프로젝트 생성
+
+1. [Supabase](https://supabase.com/dashboard)에서 새 프로젝트 생성
+2. **Project Settings** → **API** 메뉴에서 아래 값 확인
+   - **Project URL** → `SUPABASE_URL`
+   - **service_role** key → `SUPABASE_SERVICE_ROLE_KEY` (secret)
+
+### 2. 테이블 생성
+
+Supabase 대시보드 → **SQL Editor** → `supabase/schema.sql` 내용 붙여넣기 → **Run**
+
+`signups` 테이블 컬럼:
+
+| 컬럼 | 설명 |
+|------|------|
+| `name` | 이름 |
+| `phone` | 연락처 (숫자만 저장) |
+| `email` | 이메일 (중복 불가) |
+| `created_at` | 가입 신청 시각 |
+
+### 3. Vercel 환경 변수 추가
+
+`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`를 Production/Preview/Development 모두에 추가한 뒤 **Redeploy** 합니다.
+
+### 4. 저장 확인
+
+가입 신청 후 Supabase → **Table Editor** → `signups`에서 데이터를 확인합니다.
