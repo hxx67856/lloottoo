@@ -1,54 +1,42 @@
 export function buildLocalExplanation(stats, message = "") {
-  const lines = stats.sets.map((set) => {
-    const main = set.main.join(", ");
-    return `세트 ${set.setIndex}: ${main} · 보너스 ${set.bonus}`;
+  const setLines = stats.sets.map((set) => {
+    const nums = set.main.join(", ");
+    return `세트${set.setIndex} [${nums}] +${set.bonus} → ${set.exactSetOdds}`;
   });
 
-  const base = [
-    "이번 번호는 1~45에서 중복 없이, 모든 조합이 같은 확률로 무작위 추첨된 결과입니다.",
-    "특정 번호가 더 잘 나오도록 설계된 것이 아니며, 이번 결과도 그중 하나가 선택된 것입니다.",
-    "",
-    "추첨 결과",
-    ...lines,
-    "",
-    "확률 요약",
-    `· 이 조합(6개+보너스)이 그대로 나올 확률: ${stats.probabilities.exactSetOdds}`,
-    `· 특정 번호 1개가 메인 6개에 들어갈 확률: ${stats.probabilities.numberInMainPercent}`,
-    `· 보너스 번호가 특정 숫자일 확률: ${stats.probabilities.exactBonusPercent}`,
+  const lines = [
+    ...setLines,
+    `번호 1개 포함 확률: ${stats.probabilities.numberInMainPercent}`,
+    `보너스 특정 번호 확률: ${stats.probabilities.exactBonusPercent}`,
   ];
 
   if (stats.sets.length > 1) {
-    base.push(
-      `· ${stats.sets.length}세트 중 하나라도 이 조합이 나올 확률: ${(
+    lines.push(
+      `${stats.sets.length}세트 중 1개 일치: ${(
         stats.probabilities.multiSet.atLeastOneExactSet * 100
-      ).toFixed(6)}%`,
+      ).toFixed(4)}%`,
     );
   }
 
-  base.push(
-    "",
-    "※ 본 추첨기는 오락용이며, 당첨을 보장하지 않습니다.",
-  );
-
   if (message.trim()) {
-    base.push("", buildLocalFollowUp(message.trim(), stats));
+    lines.push(buildLocalFollowUp(message.trim(), stats));
   }
 
-  return base.join("\n");
+  return lines.join("\n");
 }
 
 function buildLocalFollowUp(message, stats) {
   const lower = message.toLowerCase();
 
   if (lower.includes("확률") || lower.includes("당첨")) {
-    return `질문에 대한 요약: 이 조합의 정확한 일치 확률은 ${stats.probabilities.exactSetOdds}입니다. 로또는 무작위 게임이므로 이전 결과가 다음 결과에 영향을 주지 않습니다.`;
+    return `→ 정확 일치: ${stats.probabilities.exactSetOdds}`;
   }
 
   if (lower.includes("왜") || lower.includes("이유")) {
-    return "질문에 대한 요약: 각 번호는 추첨 시점에 동일한 확률로 선택됩니다. '왜 이 번호인가'에 대한 특별한 원인은 없고, 무작위 추출의 결과입니다.";
+    return "→ 무작위 균등 추첨 결과, 특별한 원인 없음";
   }
 
-  return "질문에 대한 요약: 현재 Gemini API 무료 사용 한도에 도달해 AI 상세 답변 대신 확률 통계 기반 기본 설명을 제공합니다. 잠시 후 다시 시도해 주세요.";
+  return "→ 확률 결론만 요약됨 (AI 한도 초과 시)";
 }
 
 export function isQuotaError(message) {

@@ -75,7 +75,7 @@ async function sendMessage(message) {
   }
 
   setLoading(true);
-  const pending = appendMessage("assistant", "확률을 계산하고 설명을 준비하는 중…");
+  const pending = appendMessage("assistant", "확률 계산 중…");
   pending.classList.add("is-pending");
 
   try {
@@ -129,10 +129,7 @@ export async function explainDraw(sets) {
   messagesEl.innerHTML = "";
   panelEl.hidden = false;
 
-  appendMessage(
-    "assistant",
-    "추첨이 완료되었습니다. Gemini가 확률 통계를 바탕으로 이번 번호를 설명합니다.",
-  );
+  appendMessage("assistant", "이번 추첨의 확률 요약입니다.");
 
   await sendMessage("");
 }

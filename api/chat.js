@@ -13,14 +13,14 @@ const BONUS_POOL = MAX_NUMBER - MAIN_PICK;
 const MAIN_COMBINATIONS = 8145060;
 const FULL_SET_COMBINATIONS = MAIN_COMBINATIONS * BONUS_POOL;
 
-const SYSTEM_PROMPT = `당신은 한국 로또 6/45 추첨기의 설명 챗봇입니다.
-역할:
-- 사용자가 방금 추첨한 번호가 왜 나왔는지, 확률 관점에서 친절하게 설명합니다.
-- 모든 번호는 1~45에서 중복 없이 균등 확률로 뽑혔다는 점을 분명히 합니다.
-- 특정 번호가 "운이 좋다/나쁘다"거나 당첨을 예측한다고 말하지 않습니다.
-- 제공된 probabilityStats JSON의 수치를 근거로 설명합니다.
-- 한국어로 답하고, 짧은 문단과 불릿을 적절히 섞습니다.
-- 오락용 도구이며 당첨을 보장하지 않는다고 한 번 언급합니다.`;
+const SYSTEM_PROMPT = `한국 로또 6/45 추첨 결과의 확률만 간결히 요약합니다.
+
+규칙:
+- 3~5줄 이내, 불릿 2~4개만 사용
+- 결론(확률 수치)만 말하고 부연·서론·반복 금지
+- probabilityStats 수치만 인용
+- 무작위 균등 추첨, 당첨 예측·보장 표현 금지
+- 한국어, 오락용 안내는 마지막 1줄만`;
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -87,13 +87,9 @@ function getDrawProbabilityStats(sets) {
 }
 
 function buildInitialPrompt(sets, stats) {
-  return `방금 추첨이 끝났습니다. 아래 결과와 확률 통계를 바탕으로, 왜 이 번호들이 나왔는지(무작위 추첨 관점)와 각 확률의 의미를 설명해 주세요.
+  return `아래 데이터로 확률 결론만 짧게 요약하세요. 세트별 번호와 핵심 확률(정확 일치, 번호 포함, 보너스)만 bullet로 적으세요.
 
-추첨 결과:
-${JSON.stringify(stats.sets, null, 2)}
-
-확률 통계:
-${JSON.stringify(stats, null, 2)}`;
+${JSON.stringify({ sets: stats.sets, probabilities: stats.probabilities }, null, 2)}`;
 }
 
 function buildFollowUpPrompt(message, sets, stats, history) {
@@ -101,21 +97,15 @@ function buildFollowUpPrompt(message, sets, stats, history) {
     .map((entry) => `${entry.role === "user" ? "사용자" : "챗봇"}: ${entry.text}`)
     .join("\n");
 
-  return `추첨 결과와 확률 통계는 아래와 같습니다.
+  return `질문에 확률 결론만 1~3줄로 답하세요.
 
-추첨 결과:
-${JSON.stringify(stats.sets, null, 2)}
-
-확률 통계:
-${JSON.stringify(stats, null, 2)}
+데이터:
+${JSON.stringify({ sets: stats.sets, probabilities: stats.probabilities }, null, 2)}
 
 이전 대화:
 ${transcript}
 
-사용자의 새 질문:
-${message}
-
-위 맥락을 유지하며 확률 기반으로 답변해 주세요.`;
+질문: ${message}`;
 }
 
 function toGeminiContents(prompt) {
@@ -127,8 +117,8 @@ function toGeminiContents(prompt) {
       },
     ],
     generationConfig: {
-      temperature: 0.6,
-      maxOutputTokens: 900,
+      temperature: 0.3,
+      maxOutputTokens: 280,
     },
   };
 }
@@ -290,7 +280,7 @@ export default async function handler(req, res) {
 
       const fallbackReply = buildLocalExplanation(stats, trimmedMessage);
       return res.status(200).json({
-        reply: `${fallbackReply}\n\n---\nℹ️ Gemini API 무료 사용 한도(분당/일일 요청 제한)에 도달해 AI 설명 대신 기본 확률 설명을 표시했습니다. 잠시 후 다시 시도하거나 Google AI Studio에서 사용량·요금제를 확인해 주세요.`,
+        reply: `${fallbackReply}\n(※ AI 한도 초과, 기본 확률 요약)`,
         stats,
         source: "fallback",
         model: null,
