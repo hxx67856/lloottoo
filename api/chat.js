@@ -1,5 +1,6 @@
 import {
   buildLocalExplanation,
+  buildLocalFollowUpReply,
   isQuotaError,
   parseRetrySeconds,
 } from "./local-explanation.js";
@@ -92,35 +93,61 @@ function buildInitialPrompt(sets, stats) {
 ${JSON.stringify({ sets: stats.sets, probabilities: stats.probabilities }, null, 2)}`;
 }
 
-function buildFollowUpPrompt(message, sets, stats, history) {
-  const transcript = history
-    .map((entry) => `${entry.role === "user" ? "사용자" : "챗봇"}: ${entry.text}`)
-    .join("\n");
+function buildFollowUpPrompt(message, stats) {
+  return `아래 질문에만 확률 결론 1~3줄로 답하세요. 이전 답변을 반복하지 마세요.
 
-  return `질문에 확률 결론만 1~3줄로 답하세요.
+질문: ${message}
 
-데이터:
-${JSON.stringify({ sets: stats.sets, probabilities: stats.probabilities }, null, 2)}
-
-이전 대화:
-${transcript}
-
-질문: ${message}`;
+참고 데이터:
+${JSON.stringify({ sets: stats.sets, probabilities: stats.probabilities })}`;
 }
 
-function toGeminiContents(prompt) {
-  return {
-    contents: [
-      {
-        role: "user",
-        parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }],
-      },
-    ],
-    generationConfig: {
-      temperature: 0.3,
-      maxOutputTokens: 280,
-    },
+function toGeminiContents({ prompt, history, isFollowUp }) {
+  const generationConfig = {
+    temperature: isFollowUp ? 0.55 : 0.35,
+    maxOutputTokens: isFollowUp ? 220 : 280,
   };
+
+  if (!isFollowUp) {
+    return {
+      contents: [
+        {
+          role: "user",
+          parts: [{ text: `${SYSTEM_PROMPT}\n\n${prompt}` }],
+        },
+      ],
+      generationConfig,
+    };
+  }
+
+  const contents = [
+    {
+      role: "user",
+      parts: [
+        {
+          text: `${SYSTEM_PROMPT}\n\n추첨 데이터를 기억하고, 이후 질문마다 새로운 확률 결론만 짧게 답하세요.`,
+        },
+      ],
+    },
+    {
+      role: "model",
+      parts: [{ text: "네. 질문별로 다른 확률 결론만 짧게 답하겠습니다." }],
+    },
+  ];
+
+  for (const entry of history) {
+    contents.push({
+      role: entry.role === "user" ? "user" : "model",
+      parts: [{ text: entry.text }],
+    });
+  }
+
+  contents.push({
+    role: "user",
+    parts: [{ text: prompt }],
+  });
+
+  return { contents, generationConfig };
 }
 
 async function callGeminiOnce(apiKey, model, body) {
@@ -261,12 +288,16 @@ export default async function handler(req, res) {
 
     const stats = getDrawProbabilityStats(sets);
     const trimmedMessage = message.trim();
-    const prompt = trimmedMessage
-      ? buildFollowUpPrompt(trimmedMessage, sets, stats, history)
+    const isFollowUp = Boolean(trimmedMessage);
+    const prompt = isFollowUp
+      ? buildFollowUpPrompt(trimmedMessage, stats)
       : buildInitialPrompt(sets, stats);
 
     try {
-      const result = await callGeminiWithRetry(apiKey, toGeminiContents(prompt));
+      const result = await callGeminiWithRetry(
+        apiKey,
+        toGeminiContents({ prompt, history, isFollowUp }),
+      );
       return res.status(200).json({
         reply: result.reply,
         stats,
@@ -278,9 +309,12 @@ export default async function handler(req, res) {
         throw error;
       }
 
-      const fallbackReply = buildLocalExplanation(stats, trimmedMessage);
+      const fallbackReply = isFollowUp
+        ? buildLocalFollowUpReply(trimmedMessage, stats)
+        : buildLocalExplanation(stats);
+
       return res.status(200).json({
-        reply: `${fallbackReply}\n(※ AI 한도 초과, 기본 확률 요약)`,
+        reply: `${fallbackReply}\n(※ AI 한도 초과, 기본 답변)`,
         stats,
         source: "fallback",
         model: null,

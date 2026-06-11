@@ -82,8 +82,11 @@ async function sendMessage(message) {
     const result = await requestChat(trimmed, priorHistory);
     pending.classList.remove("is-pending");
     pending.querySelector(".chatbot-message-body").textContent = result.reply;
+
     if (trimmed) {
       history.push({ role: "user", text: trimmed });
+    } else {
+      history.push({ role: "user", text: "이번 추첨 번호의 확률을 요약해 주세요." });
     }
     history.push({ role: "assistant", text: result.reply });
   } catch (error) {
@@ -128,8 +131,6 @@ export async function explainDraw(sets) {
   history = [];
   messagesEl.innerHTML = "";
   panelEl.hidden = false;
-
-  appendMessage("assistant", "이번 추첨의 확률 요약입니다.");
 
   await sendMessage("");
 }
