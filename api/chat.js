@@ -1,5 +1,11 @@
-const MODEL = "gemini-2.5-flash-lite";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+import {
+  buildLocalExplanation,
+  isQuotaError,
+  parseRetrySeconds,
+} from "./local-explanation.js";
+
+const DEFAULT_MODEL = "gemini-2.5-flash-lite";
+const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"];
 
 const MAIN_PICK = 6;
 const MAX_NUMBER = 45;
@@ -16,6 +22,10 @@ const SYSTEM_PROMPT = `당신은 한국 로또 6/45 추첨기의 설명 챗봇�
 - 한국어로 답하고, 짧은 문단과 불릿을 적절히 섞습니다.
 - 오락용 도구이며 당첨을 보장하지 않는다고 한 번 언급합니다.`;
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function getApiKey() {
   const candidates = [
     process.env.GEMINI_API_KEY,
@@ -29,6 +39,12 @@ function getApiKey() {
   }
 
   return "";
+}
+
+function getModelCandidates() {
+  const primary = process.env.GEMINI_MODEL?.trim() || DEFAULT_MODEL;
+  const models = [primary, ...FALLBACK_MODELS.filter((m) => m !== primary)];
+  return [...new Set(models)];
 }
 
 function getDrawProbabilityStats(sets) {
@@ -112,13 +128,14 @@ function toGeminiContents(prompt) {
     ],
     generationConfig: {
       temperature: 0.6,
-      maxOutputTokens: 1200,
+      maxOutputTokens: 900,
     },
   };
 }
 
-async function callGemini(apiKey, body) {
-  const response = await fetch(GEMINI_URL, {
+async function callGeminiOnce(apiKey, model, body) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const response = await fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -132,7 +149,9 @@ async function callGemini(apiKey, body) {
   if (!response.ok) {
     const message =
       data?.error?.message || `Gemini API error (${response.status})`;
-    throw new Error(message);
+    const error = new Error(message);
+    error.status = response.status;
+    throw error;
   }
 
   const text = data?.candidates?.[0]?.content?.parts
@@ -145,6 +164,47 @@ async function callGemini(apiKey, body) {
   }
 
   return text;
+}
+
+async function callGemini(apiKey, body) {
+  const models = getModelCandidates();
+  let lastError = null;
+
+  for (const model of models) {
+    try {
+      return {
+        reply: await callGeminiOnce(apiKey, model, body),
+        model,
+        source: "gemini",
+      };
+    } catch (error) {
+      lastError = error;
+      if (!isQuotaError(error.message)) {
+        throw error;
+      }
+    }
+  }
+
+  throw lastError ?? new Error("Gemini API quota exceeded.");
+}
+
+async function callGeminiWithRetry(apiKey, body) {
+  try {
+    return await callGemini(apiKey, body);
+  } catch (error) {
+    if (!isQuotaError(error?.message)) {
+      throw error;
+    }
+
+    const waitMs = parseRetrySeconds(error.message) * 1000;
+    await sleep(waitMs);
+
+    try {
+      return await callGemini(apiKey, body);
+    } catch (retryError) {
+      throw retryError;
+    }
+  }
 }
 
 function parseBody(req) {
@@ -182,7 +242,8 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       keyConfigured: Boolean(apiKey),
-      model: MODEL,
+      model: getModelCandidates()[0],
+      fallbackModels: getModelCandidates().slice(1),
       expectedKey: "GEMINI_API_KEY",
     });
   }
@@ -209,13 +270,33 @@ export default async function handler(req, res) {
     }
 
     const stats = getDrawProbabilityStats(sets);
-    const prompt = message.trim()
-      ? buildFollowUpPrompt(message.trim(), sets, stats, history)
+    const trimmedMessage = message.trim();
+    const prompt = trimmedMessage
+      ? buildFollowUpPrompt(trimmedMessage, sets, stats, history)
       : buildInitialPrompt(sets, stats);
 
-    const reply = await callGemini(apiKey, toGeminiContents(prompt));
+    try {
+      const result = await callGeminiWithRetry(apiKey, toGeminiContents(prompt));
+      return res.status(200).json({
+        reply: result.reply,
+        stats,
+        source: result.source,
+        model: result.model,
+      });
+    } catch (error) {
+      if (!isQuotaError(error?.message)) {
+        throw error;
+      }
 
-    return res.status(200).json({ reply, stats });
+      const fallbackReply = buildLocalExplanation(stats, trimmedMessage);
+      return res.status(200).json({
+        reply: `${fallbackReply}\n\n---\nℹ️ Gemini API 무료 사용 한도(분당/일일 요청 제한)에 도달해 AI 설명 대신 기본 확률 설명을 표시했습니다. 잠시 후 다시 시도하거나 Google AI Studio에서 사용량·요금제를 확인해 주세요.`,
+        stats,
+        source: "fallback",
+        model: null,
+        quotaExceeded: true,
+      });
+    }
   } catch (error) {
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Unknown server error.",

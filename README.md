@@ -71,6 +71,18 @@ https://your-project.vercel.app/api/chat
 - 서버에서 로또 조합 확률(예: 약 1/317,657,340)을 계산해 Gemini에 전달합니다.
 - 추가 질문을 입력해 확률 관련 후속 대화가 가능합니다.
 
+### Gemini 사용 한도 (Quota) 안내
+
+무료 API 키는 모델별로 **분당·일일 요청 제한**이 있습니다.  
+`gemini-2.5-flash-lite`는 무료 티어에서 요청 수가 적을 수 있습니다.
+
+한도 초과 시 서비스는 **중단되지 않고** 확률 통계 기반 **기본 설명**으로 자동 전환됩니다.  
+잠시 후 재시도하거나, [Google AI Studio 사용량](https://aistudio.google.com/)에서 한도를 확인하세요.
+
+| 환경 변수 | 설명 |
+|-----------|------|
+| `GEMINI_MODEL` | (선택) 기본 `gemini-2.5-flash-lite`. 한도 문제 시 `gemini-2.0-flash` 등으로 변경 가능 |
+
 ## Supabase 가입 정보 저장 설정
 
 ### 1. Supabase 프로젝트 생성

@@ -50,10 +50,16 @@ async function requestChat(message = "", priorHistory = history) {
 
   const data = await response.json();
   if (!response.ok) {
-    throw new Error(data.error || "챗봇 응답을 가져오지 못했습니다.");
+    const message = data.error || "챗봇 응답을 가져오지 못했습니다.";
+    if (/quota|rate limit|한도/i.test(message)) {
+      throw new Error(
+        "Gemini API 무료 사용 한도에 도달했습니다. 잠시 후 다시 시도하거나 Google AI Studio에서 사용량을 확인해 주세요.",
+      );
+    }
+    throw new Error(message);
   }
 
-  return data.reply;
+  return data;
 }
 
 async function sendMessage(message) {
@@ -73,13 +79,13 @@ async function sendMessage(message) {
   pending.classList.add("is-pending");
 
   try {
-    const reply = await requestChat(trimmed, priorHistory);
+    const result = await requestChat(trimmed, priorHistory);
     pending.classList.remove("is-pending");
-    pending.querySelector(".chatbot-message-body").textContent = reply;
+    pending.querySelector(".chatbot-message-body").textContent = result.reply;
     if (trimmed) {
       history.push({ role: "user", text: trimmed });
     }
-    history.push({ role: "assistant", text: reply });
+    history.push({ role: "assistant", text: result.reply });
   } catch (error) {
     pending.classList.remove("is-pending");
     pending.querySelector(".chatbot-message-body").textContent =
