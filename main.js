@@ -1,5 +1,6 @@
 import { initHistory } from "./history.js";
 import { explainDraw, initChatbot } from "./chatbot.js";
+import { initSignupModal, showSignupPrompt } from "./signup-modal.js";
 import {
   animateTicketDraw,
   createDrawStage,
@@ -87,6 +88,7 @@ async function draw() {
     status.textContent = "모든 추첨이 완료되었습니다!";
     await finishDrawStage(stage);
     await explainDraw(drawnSets);
+    showSignupPrompt();
   } finally {
     isDrawing = false;
     drawBtn.classList.remove("drawing");
@@ -134,6 +136,7 @@ resultsEl.innerHTML =
 updateSetCountDisplay();
 
 initChatbot();
+initSignupModal();
 
 initHistory({
   listEl: document.getElementById("history-list"),

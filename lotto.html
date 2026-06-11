@@ -70,7 +70,39 @@
             </div>
           </form>
         </section>
+
+        <section id="testimonials-section" class="testimonials-section" hidden aria-label="당첨 후기"></section>
       </section>
+
+      <div id="signup-overlay" class="signup-overlay" hidden>
+        <div class="signup-overlay-backdrop" aria-hidden="true"></div>
+        <div class="signup-modal" role="dialog" aria-modal="true" aria-labelledby="signup-title">
+          <button type="button" class="signup-close" aria-label="닫기">×</button>
+          <p class="signup-eyebrow">AI Lotto</p>
+          <h2 id="signup-title" class="signup-title">AI 번호 추천 서비스 오픈 예정</h2>
+          <p class="signup-desc">
+            앞으로 AI가 당신만을 위한 로또 번호를 추천해 드립니다.
+            지금 가입하시면 오픈 즉시 맞춤 번호를 가장 먼저 받아보실 수 있습니다.
+          </p>
+          <form id="signup-form" class="signup-form">
+            <label class="signup-field">
+              <span class="signup-label">Name</span>
+              <input type="text" name="name" placeholder="홍길동" autocomplete="name" required />
+            </label>
+            <label class="signup-field">
+              <span class="signup-label">Contact</span>
+              <input type="tel" name="phone" placeholder="010-1234-5678" autocomplete="tel" required />
+            </label>
+            <label class="signup-field">
+              <span class="signup-label">Email</span>
+              <input type="email" name="email" placeholder="name@email.com" autocomplete="email" required />
+            </label>
+            <p id="signup-status" class="signup-status" aria-live="polite"></p>
+            <button type="submit" class="signup-submit-btn">가입 신청하기</button>
+          </form>
+          <button type="button" class="signup-skip">나중에 할게요</button>
+        </div>
+      </div>
 
       <section id="panel-history" class="tab-panel" aria-label="역대 1등 당첨번호" hidden>
         <div class="history-toolbar">
@@ -599,7 +631,9 @@
     </script>
     <script type="module">
       import { initChatbot } from "./chatbot.js";
+      import { initSignupModal } from "./signup-modal.js";
       initChatbot();
+      initSignupModal();
     </script>
   </body>
 </html>
