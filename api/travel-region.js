@@ -4,8 +4,12 @@ import {
 } from "./local-explanation.js";
 import { getRegionFallback } from "./travel-fallback.js";
 
-const DEFAULT_MODEL = "gemini-2.5-flash-lite";
-const FALLBACK_MODELS = ["gemini-2.0-flash", "gemini-1.5-flash"];
+const DEFAULT_MODEL = "gemini-2.0-flash";
+const FALLBACK_MODELS = ["gemini-2.5-flash-lite", "gemini-1.5-flash"];
+const SERVER_CACHE_TTL_MS = 60 * 60 * 1000;
+
+/** @type {Map<string, { ts: number, payload: object }>} */
+const serverCache = new Map();
 
 const RESPONSE_SCHEMA = {
   type: "object",
@@ -45,19 +49,18 @@ function getModelCandidates() {
 }
 
 function buildPrompt(regionName) {
-  return `Google 검색을 활용해 대한민국 "${regionName}"의 최신 관광 정보를 조사하세요.
+  return `"${regionName}" 관광 정보를 Google 검색으로 확인하고 JSON만 반환하세요.
+summary 35자 이내, landmarks·foods 각 4개, festivals 3개. 한국어 명사구만.`;
+}
 
-다음 JSON 형식으로만 응답하세요:
-- region: 지역명 (입력값 그대로)
-- summary: 지역 한 줄 소개 (40자 내외)
-- landmarks: 대표 랜드마크·명소 4개 (실제 장소명)
-- foods: 대표 음식·향토 음식 4개
-- festivals: 대표 축제·행사 3~4개 (실제 축제명)
+function getServerCache(regionName) {
+  const entry = serverCache.get(regionName);
+  if (!entry || Date.now() - entry.ts > SERVER_CACHE_TTL_MS) return null;
+  return entry.payload;
+}
 
-규칙:
-- 한국어로 작성
-- 검색으로 확인 가능한 실제 정보 우선
-- 각 항목은 짧은 명사구로`;
+function setServerCache(regionName, payload) {
+  serverCache.set(regionName, { ts: Date.now(), payload });
 }
 
 function extractSources(data) {
@@ -98,8 +101,8 @@ async function callGeminiOnce(apiKey, model, regionName) {
       ],
       tools: [{ google_search: {} }],
       generationConfig: {
-        temperature: 0.25,
-        maxOutputTokens: 900,
+        temperature: 0.2,
+        maxOutputTokens: 420,
         responseMimeType: "application/json",
         responseSchema: RESPONSE_SCHEMA,
       },
@@ -208,10 +211,16 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "regionName is required." });
     }
 
+    const trimmedRegion = regionName.trim();
+    const cached = getServerCache(trimmedRegion);
+    if (cached) {
+      return res.status(200).json({ ...cached, cached: true });
+    }
+
     if (!apiKey) {
-      const fallback = getRegionFallback(regionName);
+      const fallback = getRegionFallback(trimmedRegion);
       return res.status(200).json({
-        regionName,
+        regionName: trimmedRegion,
         ...fallback,
         source: "fallback",
         sources: [],
@@ -220,9 +229,9 @@ export default async function handler(req, res) {
     }
 
     try {
-      const result = await callGeminiWithRetry(apiKey, regionName.trim());
-      return res.status(200).json({
-        regionName,
+      const result = await callGeminiWithRetry(apiKey, trimmedRegion);
+      const payload = {
+        regionName: trimmedRegion,
         summary: result.info.summary,
         landmarks: result.info.landmarks,
         foods: result.info.foods,
@@ -230,15 +239,17 @@ export default async function handler(req, res) {
         source: result.source,
         sources: result.sources,
         model: result.model,
-      });
+      };
+      setServerCache(trimmedRegion, payload);
+      return res.status(200).json(payload);
     } catch (error) {
       if (!isQuotaError(error?.message)) {
         throw error;
       }
 
-      const fallback = getRegionFallback(regionName);
+      const fallback = getRegionFallback(trimmedRegion);
       return res.status(200).json({
-        regionName,
+        regionName: trimmedRegion,
         ...fallback,
         source: "fallback",
         sources: [],

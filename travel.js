@@ -21,11 +21,14 @@ const KOREA_REGIONS = [
 const KOREA_CENTER = { lat: 36.5, lng: 127.8, zoom: 7 };
 const GOOGLE_MAPS_BASE = "https://www.google.co.kr/maps";
 const API_URL = "/api/travel-region";
+const CACHE_KEY = "travel-region-cache-v1";
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const mapFrame = document.getElementById("map-frame");
 const mapOverlay = document.getElementById("map-overlay");
 const mapLoading = document.getElementById("map-loading");
 const loadingRegion = document.getElementById("loading-region");
+const loadingCaption = mapLoading.querySelector(".loading-caption");
 const startBtn = document.getElementById("start-btn");
 const retryBtn = document.getElementById("retry-btn");
 const resultPanel = document.getElementById("result-panel");
@@ -38,7 +41,7 @@ const openMapsBtn = document.getElementById("open-maps-btn");
 const infoSource = document.getElementById("info-source");
 
 let isRunning = false;
-let currentRegion = null;
+let localRegionData = null;
 
 function buildEmbedUrl(lat, lng, zoom = 13, query = "") {
   const q = query ? encodeURIComponent(query) : `${lat},${lng}`;
@@ -87,11 +90,44 @@ function setSourceNote(data) {
     return;
   }
 
+  if (data.source === "loading") {
+    infoSource.textContent = "기본 정보를 먼저 표시했습니다. Google 최신 정보를 불러오는 중…";
+    return;
+  }
+
   infoSource.textContent =
-    data.note ?? "API 연결 없음 — 기본 지역 정보를 표시합니다. Vercel 배포 후 Google 검색 정보를 받을 수 있습니다.";
+    data.note ?? "기본 지역 정보를 표시합니다.";
 }
 
-let localRegionData = null;
+function readCache() {
+  try {
+    const raw = sessionStorage.getItem(CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeCache(cache) {
+  try {
+    sessionStorage.setItem(CACHE_KEY, JSON.stringify(cache));
+  } catch {
+    /* storage full or private mode */
+  }
+}
+
+function getCachedRegionInfo(regionName) {
+  const entry = readCache()[regionName];
+  if (!entry || Date.now() - entry.ts > CACHE_TTL_MS) return null;
+  return entry.data;
+}
+
+function setCachedRegionInfo(regionName, data) {
+  if (data.source !== "google") return;
+  const cache = readCache();
+  cache[regionName] = { ts: Date.now(), data };
+  writeCache(cache);
+}
 
 async function loadLocalRegionData() {
   if (localRegionData) return localRegionData;
@@ -101,39 +137,38 @@ async function loadLocalRegionData() {
   return localRegionData;
 }
 
-async function fetchRegionInfo(regionName) {
-  try {
-    const response = await fetch(API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ regionName }),
-    });
-
-    const data = await response.json();
-    if (!response.ok) {
-      throw new Error(data.error || "지역 정보를 가져오지 못했습니다.");
-    }
-
-    return data;
-  } catch {
-    const local = await loadLocalRegionData();
-    const fallback = local.fallback[regionName];
-    if (!fallback) {
-      throw new Error("지역 정보를 가져오지 못했습니다.");
-    }
-
-    return {
-      regionName,
-      ...fallback,
-      source: "fallback",
-      sources: [],
-      note: "오프라인 모드 — 기본 지역 정보를 표시합니다. Google 검색 정보는 Vercel 배포 후 이용할 수 있습니다.",
-    };
-  }
+async function getLocalFallback(regionName) {
+  const local = await loadLocalRegionData();
+  const fallback = local.fallback[regionName];
+  if (!fallback) throw new Error("지역 정보를 찾지 못했습니다.");
+  return {
+    regionName,
+    ...fallback,
+    source: "fallback",
+    sources: [],
+  };
 }
 
-function showResult(region, data) {
-  currentRegion = region;
+async function fetchGoogleRegionInfo(regionName) {
+  const response = await fetch(API_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ regionName }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.error || "지역 정보를 가져오지 못했습니다.");
+  }
+
+  if (data.source === "google") {
+    setCachedRegionInfo(regionName, data);
+  }
+
+  return data;
+}
+
+function showResult(region, data, { scroll = true } = {}) {
   resultRegionName.textContent = region.name;
   resultSummary.textContent = data.summary;
   renderList(landmarksList, data.landmarks ?? []);
@@ -143,7 +178,22 @@ function showResult(region, data) {
   setSourceNote(data);
   resultPanel.hidden = false;
   resultPanel.classList.add("is-visible");
-  resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  if (scroll) {
+    resultPanel.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+}
+
+async function runPickAnimation(finalRegion) {
+  const ticks = 7 + Math.floor(Math.random() * 4);
+  let delay = 45;
+
+  for (let i = 0; i < ticks; i += 1) {
+    const preview = i === ticks - 1 ? finalRegion : pickRandom(KOREA_REGIONS);
+    loadingRegion.textContent = preview.name;
+    setMapView(preview.lat, preview.lng, preview.zoom, preview.name);
+    await sleep(delay);
+    delay = Math.min(delay + 12, 110);
+  }
 }
 
 async function runRandomTrip() {
@@ -156,25 +206,33 @@ async function runRandomTrip() {
   resultPanel.hidden = true;
   resultPanel.classList.remove("is-visible");
   mapLoading.hidden = false;
+  loadingCaption.textContent = "여행지를 고르는 중…";
 
   const finalRegion = pickRandom(KOREA_REGIONS);
-  const ticks = 12 + Math.floor(Math.random() * 6);
-  let delay = 60;
+  const cached = getCachedRegionInfo(finalRegion.name);
 
-  for (let i = 0; i < ticks; i += 1) {
-    const preview = i === ticks - 1 ? finalRegion : pickRandom(KOREA_REGIONS);
-    loadingRegion.textContent = preview.name;
-    setMapView(preview.lat, preview.lng, preview.zoom, preview.name);
-    await sleep(delay);
-    delay = Math.min(delay + 20, 200);
-  }
+  const googlePromise = cached ? null : fetchGoogleRegionInfo(finalRegion.name).catch(() => null);
+
+  await runPickAnimation(finalRegion);
+  mapLoading.hidden = true;
 
   try {
-    const data = await fetchRegionInfo(finalRegion.name);
-    mapLoading.hidden = true;
-    showResult(finalRegion, data);
+    if (cached) {
+      showResult(finalRegion, cached);
+      return;
+    }
+
+    const localData = await getLocalFallback(finalRegion.name);
+    showResult(finalRegion, { ...localData, source: "loading" });
+
+    const googleData = await googlePromise;
+    if (googleData?.source === "google") {
+      showResult(finalRegion, googleData, { scroll: false });
+      return;
+    }
+
+    setSourceNote(localData);
   } catch (error) {
-    mapLoading.hidden = true;
     mapOverlay.hidden = false;
     const desc = mapOverlay.querySelector(".map-overlay-desc");
     if (desc) {
@@ -189,14 +247,12 @@ async function runRandomTrip() {
 }
 
 function resetToHome() {
-  currentRegion = null;
   resultPanel.hidden = true;
   resultPanel.classList.remove("is-visible");
   mapLoading.hidden = true;
   mapOverlay.hidden = false;
   loadingRegion.textContent = "";
-  const caption = mapLoading.querySelector(".loading-caption");
-  if (caption) caption.textContent = "Google에서 지역 정보를 불러오는 중…";
+  loadingCaption.textContent = "여행지를 고르는 중…";
   const desc = mapOverlay.querySelector(".map-overlay-desc");
   if (desc) {
     desc.textContent = "지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.";
@@ -206,6 +262,7 @@ function resetToHome() {
 
 function init() {
   setMapView(KOREA_CENTER.lat, KOREA_CENTER.lng, KOREA_CENTER.zoom, "대한민국");
+  loadLocalRegionData().catch(() => {});
   startBtn.addEventListener("click", runRandomTrip);
   retryBtn.addEventListener("click", () => {
     resetToHome();
