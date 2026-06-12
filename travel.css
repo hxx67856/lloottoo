@@ -1,0 +1,442 @@
+/* DESIGN3 — Notion design tokens (travel page, map-first) */
+
+.travel-page {
+  --primary: #5645d4;
+  --primary-pressed: #4534b3;
+  --on-primary: #ffffff;
+  --brand-navy: #0a1530;
+  --link-blue: #0075de;
+  --brand-purple-800: #391c57;
+  --brand-orange-deep: #793400;
+  --brand-green: #1aae39;
+  --brand-teal: #2a9d99;
+  --card-tint-peach: #ffe8d4;
+  --card-tint-lavender: #e6e0f5;
+  --card-tint-sky: #dcecfa;
+  --canvas: #ffffff;
+  --surface: #f6f5f4;
+  --hairline: #e5e3df;
+  --hairline-soft: #ede9e4;
+  --hairline-strong: #c8c4be;
+  --ink: #1a1a1a;
+  --charcoal: #37352f;
+  --slate: #5d5b54;
+  --steel: #787671;
+  --muted: #bbb8b1;
+  --on-dark: #ffffff;
+
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 20px;
+  --space-xl: 24px;
+  --space-xxl: 32px;
+  --space-section: 64px;
+
+  --shadow-mockup: rgba(15, 15, 15, 0.2) 0px 24px 48px -8px;
+  --shadow-card: rgba(15, 15, 15, 0.08) 0px 4px 12px 0px;
+
+  --font-sans: Inter, "Noto Sans KR", -apple-system, system-ui, "Segoe UI", Helvetica, sans-serif;
+
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.55;
+  color: var(--ink);
+  background: var(--canvas);
+  min-height: 100vh;
+}
+
+.travel-page *,
+.travel-page *::before,
+.travel-page *::after {
+  box-sizing: border-box;
+}
+
+/* Navigation */
+.travel-nav {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: var(--canvas);
+  border-bottom: 1px solid var(--hairline);
+}
+
+.travel-nav-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--space-xxl);
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-xl);
+}
+
+.travel-nav-brand {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--ink);
+  text-decoration: none;
+  letter-spacing: -0.02em;
+}
+
+.travel-nav-links {
+  display: flex;
+  align-items: center;
+  gap: var(--space-lg);
+}
+
+.travel-nav-link {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--steel);
+  text-decoration: none;
+}
+
+.travel-nav-link.is-current {
+  color: var(--ink);
+}
+
+/* Map-first stage */
+.travel-stage {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-xxl) var(--space-section);
+}
+
+.map-stage {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-sm);
+}
+
+.map-stage-shell {
+  position: relative;
+  width: 100%;
+  height: min(72vh, 720px);
+  min-height: 420px;
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow-mockup);
+}
+
+.map-frame {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.map-caption {
+  margin: 0;
+  font-size: 13px;
+  color: var(--steel);
+}
+
+.map-caption a {
+  color: var(--link-blue);
+  text-decoration: none;
+}
+
+.map-caption a:hover {
+  text-decoration: underline;
+}
+
+/* Start overlay */
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-xl);
+  background: linear-gradient(
+    180deg,
+    rgba(10, 21, 48, 0.55) 0%,
+    rgba(10, 21, 48, 0.35) 45%,
+    rgba(10, 21, 48, 0.15) 100%
+  );
+}
+
+.map-overlay-card {
+  width: min(100%, 420px);
+  padding: var(--space-xxl);
+  border-radius: var(--radius-lg);
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--hairline);
+  box-shadow: var(--shadow-card);
+  text-align: center;
+}
+
+.micro-uppercase {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.4;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--steel);
+}
+
+.map-overlay-title {
+  margin: var(--space-xs) 0 0;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.map-overlay-desc {
+  margin: var(--space-sm) 0 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+
+/* Loading state */
+.map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-xs);
+  background: rgba(10, 21, 48, 0.72);
+  color: var(--on-dark);
+  text-align: center;
+  padding: var(--space-xl);
+}
+
+.loading-region {
+  margin: 0;
+  font-size: clamp(28px, 5vw, 40px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.loading-caption {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.78);
+}
+
+/* Buttons */
+.btn-primary,
+.btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: 10px 18px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  text-decoration: none;
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.btn-primary {
+  background: var(--primary);
+  color: var(--on-primary);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: var(--primary-pressed);
+}
+
+.btn-primary:disabled {
+  background: var(--hairline);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--hairline-strong);
+}
+
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-start {
+  width: 100%;
+  margin-top: var(--space-lg);
+}
+
+/* Result panel */
+.result-panel {
+  margin-top: var(--space-xxl);
+  opacity: 0;
+  transform: translateY(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.result-panel.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.result-panel-header {
+  margin-bottom: var(--space-xl);
+}
+
+.result-region-name {
+  margin: var(--space-xs) 0 0;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.result-summary {
+  margin: var(--space-sm) 0 0;
+  max-width: 640px;
+  font-size: 18px;
+  line-height: 1.5;
+  color: var(--slate);
+}
+
+.info-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-md);
+}
+
+.info-card {
+  border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  padding: var(--space-xl);
+}
+
+.info-card.is-tint-sky {
+  background: var(--card-tint-sky);
+}
+
+.info-card.is-tint-peach {
+  background: var(--card-tint-peach);
+}
+
+.info-card.is-tint-lavender {
+  background: var(--card-tint-lavender);
+}
+
+.info-card-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.4;
+  color: var(--charcoal);
+}
+
+.info-list {
+  margin: var(--space-md) 0 0;
+  padding-left: 1.1em;
+  color: var(--charcoal);
+}
+
+.info-list li {
+  margin-top: var(--space-xs);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.info-list li:first-child {
+  margin-top: 0;
+}
+
+.result-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  margin-top: var(--space-xl);
+}
+
+.info-source {
+  margin: var(--space-md) 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--steel);
+}
+
+.info-source a {
+  color: var(--link-blue);
+  text-decoration: none;
+}
+
+.info-source a:hover {
+  text-decoration: underline;
+}
+
+/* Footer */
+.travel-footer {
+  border-top: 1px solid var(--hairline);
+  padding: var(--space-section) var(--space-xxl);
+}
+
+.travel-footer-note {
+  max-width: 1280px;
+  margin: 0 auto;
+  font-size: 14px;
+  color: var(--steel);
+}
+
+/* Responsive */
+@media (max-width: 1023px) {
+  .travel-nav-inner,
+  .travel-stage,
+  .travel-footer {
+    padding-left: var(--space-md);
+    padding-right: var(--space-md);
+  }
+
+  .travel-nav-links {
+    display: none;
+  }
+
+  .info-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 767px) {
+  .map-stage-shell {
+    height: min(68vh, 560px);
+    min-height: 360px;
+  }
+
+  .map-overlay-card {
+    padding: var(--space-xl);
+  }
+
+  .result-actions {
+    flex-direction: column;
+  }
+
+  .result-actions .btn-primary,
+  .result-actions .btn-secondary {
+    width: 100%;
+  }
+}

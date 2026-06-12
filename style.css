@@ -73,6 +73,15 @@ body {
   color: var(--ink);
 }
 
+.utility-link {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.utility-link:hover {
+  text-decoration: underline;
+}
+
 .site-header {
   background: var(--canvas);
   border-bottom: 1px solid var(--hairline-soft);

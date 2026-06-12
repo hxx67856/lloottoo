@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>랜덤 여행지 뽑기 — 대한민국</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Noto+Sans+KR:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./travel.css" />
+  </head>
+  <body class="travel-page">
+    <header class="travel-nav">
+      <div class="travel-nav-inner">
+        <a href="index.html" class="travel-nav-brand">Lloottoo</a>
+        <nav class="travel-nav-links" aria-label="보조 메뉴">
+          <a href="index.html" class="travel-nav-link">Lotto Draw</a>
+          <span class="travel-nav-link is-current" aria-current="page">Random Trip</span>
+        </nav>
+      </div>
+    </header>
+
+    <main class="travel-stage">
+      <section class="map-stage" aria-label="대한민국 지도">
+        <div class="map-stage-shell">
+          <iframe
+            id="map-frame"
+            class="map-frame"
+            title="대한민국 Google 지도"
+            loading="eager"
+            referrerpolicy="no-referrer-when-downgrade"
+            allowfullscreen
+          ></iframe>
+
+          <div id="map-overlay" class="map-overlay">
+            <div class="map-overlay-card">
+              <p class="micro-uppercase">Random Trip</p>
+              <h1 class="map-overlay-title">어디로 갈까?</h1>
+              <p class="map-overlay-desc">지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.</p>
+              <button type="button" id="start-btn" class="btn-primary btn-start">시작하기</button>
+            </div>
+          </div>
+
+          <div id="map-loading" class="map-loading" hidden aria-live="polite">
+            <p id="loading-region" class="loading-region"></p>
+            <p class="loading-caption">Google에서 지역 정보를 불러오는 중…</p>
+          </div>
+        </div>
+        <p class="map-caption">
+          지도 제공:
+          <a href="https://www.google.co.kr/maps/?entry=ttu" target="_blank" rel="noopener noreferrer"
+            >Google 지도</a
+          >
+        </p>
+      </section>
+
+      <section id="result-panel" class="result-panel" hidden aria-live="polite">
+        <header class="result-panel-header">
+          <p class="micro-uppercase">Today&apos;s Region</p>
+          <h2 id="result-region-name" class="result-region-name"></h2>
+          <p id="result-summary" class="result-summary"></p>
+        </header>
+
+        <div class="info-grid">
+          <article class="info-card is-tint-sky">
+            <h3 class="info-card-title">랜드마크</h3>
+            <ul id="landmarks-list" class="info-list"></ul>
+          </article>
+          <article class="info-card is-tint-peach">
+            <h3 class="info-card-title">대표 음식</h3>
+            <ul id="foods-list" class="info-list"></ul>
+          </article>
+          <article class="info-card is-tint-lavender">
+            <h3 class="info-card-title">축제 · 행사</h3>
+            <ul id="festivals-list" class="info-list"></ul>
+          </article>
+        </div>
+
+        <div class="result-actions">
+          <a
+            id="open-maps-btn"
+            class="btn-primary"
+            href="https://www.google.co.kr/maps/?entry=ttu"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Google 지도에서 보기
+          </a>
+          <button type="button" id="retry-btn" class="btn-secondary">다시 뽑기</button>
+        </div>
+
+        <p id="info-source" class="info-source"></p>
+      </section>
+    </main>
+
+    <footer class="travel-footer">
+      <p class="travel-footer-note">※ 지역 정보는 Google 검색 기반이며, 방문 전 일정·교통을 확인해 주세요.</p>
+    </footer>
+
+    <script type="module" src="./travel.js"></script>
+  </body>
+</html>
