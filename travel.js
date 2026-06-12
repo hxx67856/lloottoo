@@ -28,7 +28,7 @@ const mapFrame = document.getElementById("map-frame");
 const mapOverlay = document.getElementById("map-overlay");
 const mapLoading = document.getElementById("map-loading");
 const loadingRegion = document.getElementById("loading-region");
-const loadingCaption = mapLoading.querySelector(".loading-caption");
+const loadingCaption = mapLoading?.querySelector(".loading-caption");
 const startBtn = document.getElementById("start-btn");
 const retryBtn = document.getElementById("retry-btn");
 const resultPanel = document.getElementById("result-panel");
@@ -206,7 +206,7 @@ async function runRandomTrip() {
   resultPanel.hidden = true;
   resultPanel.classList.remove("is-visible");
   mapLoading.hidden = false;
-  loadingCaption.textContent = "여행지를 고르는 중…";
+  if (loadingCaption) loadingCaption.textContent = "여행지를 고르는 중…";
 
   const finalRegion = pickRandom(KOREA_REGIONS);
   const cached = getCachedRegionInfo(finalRegion.name);
@@ -252,7 +252,7 @@ function resetToHome() {
   mapLoading.hidden = true;
   mapOverlay.hidden = false;
   loadingRegion.textContent = "";
-  loadingCaption.textContent = "여행지를 고르는 중…";
+  if (loadingCaption) loadingCaption.textContent = "여행지를 고르는 중…";
   const desc = mapOverlay.querySelector(".map-overlay-desc");
   if (desc) {
     desc.textContent = "지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.";
@@ -261,6 +261,8 @@ function resetToHome() {
 }
 
 function init() {
+  if (!startBtn || !mapFrame) return;
+
   setMapView(KOREA_CENTER.lat, KOREA_CENTER.lng, KOREA_CENTER.zoom, "대한민국");
   loadLocalRegionData().catch(() => {});
   startBtn.addEventListener("click", runRandomTrip);
