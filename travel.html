@@ -35,20 +35,19 @@
             allowfullscreen
           ></iframe>
 
-          <div id="map-overlay" class="map-overlay">
-            <div class="map-overlay-card">
-              <p class="micro-uppercase">Random Trip</p>
-              <h1 class="map-overlay-title">어디로 갈까?</h1>
-              <p class="map-overlay-desc">지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.</p>
-              <button type="button" id="start-btn" class="btn-primary btn-start">시작하기</button>
-            </div>
-          </div>
-
           <div id="map-loading" class="map-loading" hidden aria-live="polite">
             <p id="loading-region" class="loading-region"></p>
             <p class="loading-caption">여행지를 고르는 중…</p>
           </div>
         </div>
+
+        <div id="map-intro" class="map-intro">
+          <p class="micro-uppercase">Random Trip</p>
+          <h1 class="map-intro-title">어디로 갈까?</h1>
+          <p class="map-intro-desc">지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.</p>
+          <button type="button" id="start-btn" class="btn-primary btn-start">시작하기</button>
+        </div>
+
         <p class="map-caption">
           지도 제공:
           <a href="https://www.google.co.kr/maps/?entry=ttu" target="_blank" rel="noopener noreferrer"

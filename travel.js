@@ -25,7 +25,7 @@ const CACHE_KEY = "travel-region-cache-v1";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 const mapFrame = document.getElementById("map-frame");
-const mapOverlay = document.getElementById("map-overlay");
+const mapIntro = document.getElementById("map-intro");
 const mapLoading = document.getElementById("map-loading");
 const loadingRegion = document.getElementById("loading-region");
 const loadingCaption = mapLoading?.querySelector(".loading-caption");
@@ -202,7 +202,7 @@ async function runRandomTrip() {
   isRunning = true;
   startBtn.disabled = true;
   retryBtn.disabled = true;
-  mapOverlay.hidden = true;
+  if (mapIntro) mapIntro.hidden = true;
   resultPanel.hidden = true;
   resultPanel.classList.remove("is-visible");
   mapLoading.hidden = false;
@@ -233,11 +233,13 @@ async function runRandomTrip() {
 
     setSourceNote(localData);
   } catch (error) {
-    mapOverlay.hidden = false;
-    const desc = mapOverlay.querySelector(".map-overlay-desc");
-    if (desc) {
-      desc.textContent =
-        error instanceof Error ? error.message : "다시 시도해 주세요.";
+    if (mapIntro) {
+      mapIntro.hidden = false;
+      const desc = mapIntro.querySelector(".map-intro-desc");
+      if (desc) {
+        desc.textContent =
+          error instanceof Error ? error.message : "다시 시도해 주세요.";
+      }
     }
   } finally {
     isRunning = false;
@@ -250,13 +252,15 @@ function resetToHome() {
   resultPanel.hidden = true;
   resultPanel.classList.remove("is-visible");
   mapLoading.hidden = true;
-  mapOverlay.hidden = false;
+  if (mapIntro) {
+    mapIntro.hidden = false;
+    const desc = mapIntro.querySelector(".map-intro-desc");
+    if (desc) {
+      desc.textContent = "지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.";
+    }
+  }
   loadingRegion.textContent = "";
   if (loadingCaption) loadingCaption.textContent = "여행지를 고르는 중…";
-  const desc = mapOverlay.querySelector(".map-overlay-desc");
-  if (desc) {
-    desc.textContent = "지도 위에서 전국 17개 시·도 중 한 곳을 무작위로 골라 드립니다.";
-  }
   setMapView(KOREA_CENTER.lat, KOREA_CENTER.lng, KOREA_CENTER.zoom, "대한민국");
 }
 

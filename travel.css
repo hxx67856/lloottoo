@@ -153,35 +153,36 @@
   text-decoration: underline;
 }
 
-/* Start overlay */
-.map-overlay {
-  position: absolute;
-  inset: 0;
-  z-index: 2;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: var(--space-xl);
-  pointer-events: auto;
-  background: linear-gradient(
-    180deg,
-    rgba(10, 21, 48, 0.55) 0%,
-    rgba(10, 21, 48, 0.35) 45%,
-    rgba(10, 21, 48, 0.15) 100%
-  );
-}
-
-.map-overlay-card {
-  position: relative;
-  z-index: 1;
-  width: min(100%, 420px);
+/* Intro panel (outside iframe stack) */
+.map-intro {
+  margin-top: var(--space-md);
   padding: var(--space-xxl);
-  border-radius: var(--radius-lg);
-  background: rgba(255, 255, 255, 0.96);
   border: 1px solid var(--hairline);
+  border-radius: var(--radius-lg);
+  background: var(--canvas);
   box-shadow: var(--shadow-card);
   text-align: center;
-  pointer-events: auto;
+}
+
+.map-intro[hidden] {
+  display: none !important;
+}
+
+.map-intro-title {
+  margin: var(--space-xs) 0 0;
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 600;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+}
+
+.map-intro-desc {
+  margin: var(--space-sm) auto 0;
+  max-width: 520px;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--slate);
 }
 
 .micro-uppercase {
@@ -192,22 +193,6 @@
   letter-spacing: 1px;
   text-transform: uppercase;
   color: var(--steel);
-}
-
-.map-overlay-title {
-  margin: var(--space-xs) 0 0;
-  font-size: clamp(32px, 5vw, 48px);
-  font-weight: 600;
-  line-height: 1.1;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-}
-
-.map-overlay-desc {
-  margin: var(--space-sm) 0 0;
-  font-size: 15px;
-  line-height: 1.5;
-  color: var(--slate);
 }
 
 /* Loading state */
@@ -227,10 +212,6 @@
 }
 
 .map-loading[hidden] {
-  display: none !important;
-}
-
-.map-overlay[hidden] {
   display: none !important;
 }
 
@@ -298,9 +279,8 @@
 }
 
 .btn-start {
-  position: relative;
-  z-index: 2;
   width: 100%;
+  max-width: 320px;
   margin-top: var(--space-lg);
   cursor: pointer;
 }
@@ -445,10 +425,6 @@
   .map-stage-shell {
     height: min(68vh, 560px);
     min-height: 360px;
-  }
-
-  .map-overlay-card {
-    padding: var(--space-xl);
   }
 
   .result-actions {
